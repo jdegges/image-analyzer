@@ -9,7 +9,7 @@
 
 #include "image_analyzer.h"
 
-#define ia_pixel_t uint8_t
+#define ia_pixel_t double
 
 /* video device interface object */
 typedef struct
