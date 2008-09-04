@@ -17,6 +17,42 @@
  */
 int ia_seq_getimage ( ia_seq_t* s )
 {
+    // keep ref list up to date
+    if( s->i_frame == 0 || s->param->i_maxrefs == 0 )
+    {
+    }
+    else if( s->i_nrefs == s->param->i_maxrefs )
+    {
+        int i;
+        ia_image_t* tmp = s->iaf;
+        s->iaf = s->ref[s->i_nrefs-1];
+        i = s->i_nrefs-1;
+        while( i-- )
+            s->ref[i+1] = s->ref[i];
+        s->ref[0] = tmp;
+    }
+    else if( s->i_nrefs < s->param->i_maxrefs )
+    {
+        int i;
+        ia_image_t* tmp = s->iaf;
+        s->iaf = ia_malloc( sizeof(ia_image_t) );
+        if( s->iaf == NULL )
+            return 1;
+        s->iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
+        if( s->iaf->pix == NULL )
+            return 1;
+        i = s->i_nrefs;
+        while( i-- )
+            s->ref[i+1] = s->ref[i];
+        s->ref[0] = tmp;
+        s->i_nrefs++;
+    }
+    else
+    {
+        return 1;
+    }
+
+
     if( s->param->b_vdev )
     {
         if( iaio_cam_getimage(s) < 0 )
@@ -28,10 +64,7 @@ int ia_seq_getimage ( ia_seq_t* s )
     else
     {
         if( ia_fgets(s->buf,1024,s->fin) == NULL )
-        {
-            fprintf( stderr,"Error reading image file name from input file\n" );
             return 1;
-        }
 
         s->buf = ia_strtok( s->buf,"\n" );
         if( iaio_getimage(s->buf,s->iaf) )
@@ -40,7 +73,8 @@ int ia_seq_getimage ( ia_seq_t* s )
             return 1;
         }
     }
-    snprintf( s->name,1024,"%s/image-%010lld.png",s->param->output_directory,++s->i_frame );
+    snprintf( s->iar->name,1024,"%s/image-%010lld.%s",s->param->output_directory,++s->i_frame,s->param->ext );
+    s->iar->i_frame = s->iaf->i_frame = s->i_frame;
 
     return 0;
 }
@@ -64,10 +98,6 @@ int ia_seq_probelist( ia_seq_t* s )
 
 void* ia_seq_saveimage( void* ptr )
 {
-    char* c = ia_strrchr(  ((ia_seq_t*)ptr)->name,'.' );
-    c[1] = 'b';
-    c[2] = 'm';
-    c[3] = 'p';
     iaio_saveimage( (ia_seq_t*)ptr );
     return NULL;
 }
@@ -97,7 +127,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->iaf = (ia_image_t*) ia_malloc( sizeof(ia_image_t) );
     if( s->iaf == NULL )
     {
-        ia_free( s );
         fprintf( stderr,"Error allocating new image\n" );
         return NULL;
     }
@@ -105,8 +134,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->iar = (ia_image_t*) ia_malloc( sizeof(ia_image_t) );
     if( s->iar == NULL )
     {
-        ia_free( s->iaf );
-        ia_free( s );
         fprintf( stderr,"Error allocating new image\n" );
         return NULL;
     }
@@ -114,9 +141,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->buf = (char*) ia_malloc( sizeof(char)*1024 );
     if( s->buf == NULL )
     {
-        ia_free( s->iaf );
-        ia_free( s->iar );
-        ia_free( s );
         fprintf( stderr,"Error allocating mem for buf\n" );
         return NULL;
     }
@@ -128,16 +152,12 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         s->fin = ia_fopen( s->param->input_file, "r" );
         if( s->fin == NULL )
         {
-            ia_free( s );
             fprintf( stderr,"Error opening input file\n" );
             return NULL;
         }
 
         if( ia_seq_probelist(s) )
         {
-            ia_free( s->iaf );
-            ia_free( s->iar );
-            ia_free( s );
             fprintf( stderr,"Error getting image\n" );
             return NULL;
         }
@@ -146,9 +166,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         s->fin = ia_fopen( s->param->input_file, "r" );
         if( s->fin == NULL )
         {
-            ia_free( s->iaf );
-            ia_free( s->iar );
-            ia_free( s );
             fprintf( stderr,"Error opening input file\n" );
             return NULL;
         }
@@ -167,22 +184,17 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
 
     s->iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
     if( s->iaf->pix == NULL )
-    {
-        ia_free( s->iar );
-        ia_free( s->iaf );
-        ia_free( s );
-    }
+        return NULL;
 
     s->iar->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
     if( s->iar->pix == NULL )
-    {
-        ia_free( s->iaf->pix );
-        ia_free( s->iar );
-        ia_free( s->iaf );
-        ia_free( s );
         return NULL;
-    }
 
+    s->ref = (ia_image_t**) ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
+    if( s->ref == NULL )
+        return NULL;
+
+    s->i_nrefs = 0;
     s->i_frame = 0;
     s->dib = FreeImage_AllocateT( FIT_BITMAP,s->param->i_width,s->param->i_height,24,FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
 
@@ -200,6 +212,13 @@ inline void ia_seq_close( ia_seq_t* s )
         if( iaio_cam_close(s) )
             fprintf( stderr,"Error closing camera\n" );
     }
+
+    while( s->i_nrefs-- )
+    {
+        ia_free( s->ref[s->i_nrefs]->pix );
+        ia_free( s->ref[s->i_nrefs] );
+    }
+    ia_free( s->ref );
 
     ia_free( s->iaf->pix );
     ia_free( s->iaf );

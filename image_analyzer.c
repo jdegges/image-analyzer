@@ -57,7 +57,9 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     memset( p->output_directory,0,sizeof(char)*1024 );
     memset( p->filter,0,sizeof(int)*15 );
     strncpy( p->video_device,"/dev/video0",1024 );
+    strncpy( p->ext,"bmp",16 );
 
+    p->i_maxrefs = 4;
     p->i_size = 0;
     p->b_verbose = 0;
     p->Settings.BgStartFrame = 0;
@@ -97,6 +99,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"height"       ,1,0,0},
             {"verbose"      ,0,0,0},
             {"video-device" ,1,0,0},
+            {"refs"         ,1,0,0},
+            {"ext"          ,1,0,0},
 			{0              ,0,0,0}
 		};
 		char filters[][15] = {
@@ -177,6 +181,14 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
         {
             strncpy( p->video_device,optarg,1024 );
         }
+        else if ( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
+        {
+            p->i_maxrefs = strtoul( optarg,NULL,10 );
+        }
+        else if ( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )
+        {
+            strncpy( p->ext,optarg,10 );
+        }
 		else
 		{
 			fprintf ( stderr,"Unrecognized option -%c\n",c );
@@ -210,6 +222,7 @@ void usage ( void )
 	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,curv,ssd,me,blobs\n" );
     printf ( "  -w, --width <int>               Image width, must be specified in video capture mode\n" );
     printf ( "  -h, --height <int>              Image height, must be specified in video capture mode\n" );
+    printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
     printf ( "\n" );
 	printf ( "  -s, --stats                     Calculates and prints statistics\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );

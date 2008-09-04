@@ -94,9 +94,9 @@ int iaio_saveimage ( ia_seq_t* s )
         return 1;
 
     ia_memcpy_pixel_to_uint8( FreeImage_GetBits(s->dib),s->iar->pix,s->param->i_size*3 );
-    printf( "save image to: %s\n",s->name );
+    printf( "save image to: %s\n",s->iar->name );
 
-    if ( FreeImage_Save(FreeImage_GetFIFFromFilename(s->name),s->dib,s->name,0) )
+    if ( FreeImage_Save(FreeImage_GetFIFFromFilename(s->iar->name),s->dib,s->iar->name,0) )
         return 0;
     
     return 1;
@@ -339,15 +339,9 @@ int iaio_cam_getimage ( ia_seq_t* s )
         if( s->cam.palette == 1 )
             ia_memcpy_uint8_to_pixel( s->iaf->pix,s->cam.buffers[buf.index].start,s->cam.data_size );
         else if( s->cam.palette == 2 )
-        {
-//            yuv420torgb24( s->cam.buffers[buf.index].start,s->iaf->pix,s->param->i_width,s->param->i_height );
-            ia_memcpy_uint8_to_pixel( s->iaf->pix,s->cam.buffers[buf.index].start,s->cam.data_size );
-        }
+            yuv420torgb24( s->cam.buffers[buf.index].start,s->iaf->pix,s->param->i_width,s->param->i_height );
         else if( s->cam.palette == 3 )
-        {
-//            yuyvtorgb24( s->cam.buffers[buf.index].start,s->iaf->pix,s->param->i_width,s->param->i_height );
-            ia_memcpy_uint8_to_pixel( s->iaf->pix,s->cam.buffers[buf.index].start,s->cam.data_size );
-        }
+            yuyvtorgb24( s->cam.buffers[buf.index].start,s->iaf->pix,s->param->i_width,s->param->i_height );
 
         if( xioctl(s->cam.fd,VIDIOC_QBUF,&buf) == -1 )
             errno_exit( s,"VIDIOC_QBUF" );
@@ -400,10 +394,10 @@ inline int offset ( int width, int row, int col, int color )
     return row * width * 3 + col * 3 + color;
 }
 
-inline void yuv420torgb24( unsigned char* data, ia_pixel_t* pix, int width, int height )
+inline void yuv420torgb24( uint8_t* data, ia_pixel_t* pix, int width, int height )
 {
     int row, col;
-    unsigned char *y, *u, *v;
+    uint8_t *y, *u, *v;
     int yy, uu, vv;
     int r, g, b;
 
@@ -467,7 +461,7 @@ inline void yuv420torgb24( unsigned char* data, ia_pixel_t* pix, int width, int 
     }
 }
 
-inline void yuyvtorgb24( unsigned char* data, ia_pixel_t* pix, int width, int height )
+inline void yuyvtorgb24( uint8_t* data, ia_pixel_t* pix, int width, int height )
 {
     int row, col;
     int y, cb, cr;

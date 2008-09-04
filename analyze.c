@@ -325,7 +325,7 @@ void fstderiv( ia_seq_t* s )
     double lmaxr, lmaxg, lmaxb;
     double lminr, lming, lminb;
     double max = 255, op;
-    lmaxr = lmaxg = lmaxb = 0;
+    lmaxr = lmaxg = lmaxb = -INT_MAX;
     lminr = lming = lminb =  INT_MAX;
 
     for(i = 0; i < s->param->i_height; i++)
@@ -435,25 +435,34 @@ void fstderiv( ia_seq_t* s )
             s->iar->pix[offset(s->param->i_height,s->param->i_width,j,i,2)] = (( s->iar->pix[offset(s->param->i_height,s->param->i_width,j,i,2)] - lminb ) * op);
 }
 
-/*
-void diff( ia_image_t* iaa, ia_image_t* iab, ia_image_t* iar )
+void diff( ia_seq_t* s )
 {
     int i;
-    ia_pixel_t lmax = -INT_MAX<<2, lmin = INT_MAX<<2, max = 255, op;
-    for(i = 0; i < iaa->width*iaa->height; i++)
+    double lmaxr, lmaxg, lmaxb;
+    double lminr, lming, lminb;
+    double max = 255, op;
+    lmaxr = lmaxg = lmaxb = -INT_MAX;
+    lminr = lming = lminb =  INT_MAX;
+
+    if( s->i_nrefs == 0 )
     {
-        s->iar->pix[i] = fabs( iaa->pix[i] - iab->pix[i] );
-        if( s->iar->pix[i] > lmax)
-            lmax = s->iar->pix[i];
-        if( s->iar->pix[i] < lmin )
-            lmin = s->iar->pix[i];
+        ia_memset( s->iar->pix,0,sizeof(ia_pixel_t)*s->param->i_size*3 );
+        return;
+    }
+    
+    for(i = 0; i < s->param->i_size*3; i++)
+    {
+        s->iar->pix[i] = fabs( s->iaf->pix[i] - s->ref[0]->pix[i] );
+        if( s->iar->pix[i] > lmaxr)
+            lmaxr = s->iar->pix[i];
+        if( s->iar->pix[i] < lminr )
+            lminr = s->iar->pix[i];
     }
 
-    op = max/(lmax - lmin);
-    for(i = 0; i < iaa->width*iaa->height; i++ )
-        s->iar->pix[i] = ( s->iar->pix[i] - lmin ) * op;
+    op = max/(lmaxr - lminr);
+    for(i = 0; i < s->param->i_size*3; i++ )
+        s->iar->pix[i] = ( s->iar->pix[i] - lminr ) * op;
 }
-*/
 
 void bhatta_init ( ia_seq_t* s )
 {
@@ -486,8 +495,8 @@ void bhatta_init ( ia_seq_t* s )
         }
     }
 
-    s->mask = (unsigned char*) ia_malloc( sizeof(unsigned char)*s->param->i_size );
-    s->diffImage = (unsigned char*) ia_malloc( sizeof(unsigned char)*s->param->i_size*3 );
+    s->mask = (uint8_t*) ia_malloc( sizeof(uint8_t)*s->param->i_size );
+    s->diffImage = (uint8_t*) ia_malloc( sizeof(uint8_t)*s->param->i_size*3 );
 }
 
 void bhatta_close ( ia_seq_t* s )
@@ -654,8 +663,8 @@ int bhatta_estimatefg( ia_seq_t* s )
     int pos = 0;
 
     // clear s->mask/diff image
-    ia_memset( s->mask,0,s->param->i_size*sizeof(unsigned char) );
-    ia_memset( s->diffImage,0,s->param->i_size*3*sizeof(unsigned char) );
+    ia_memset( s->mask,0,s->param->i_size*sizeof(uint8_t) );
+    ia_memset( s->diffImage,0,s->param->i_size*3*sizeof(uint8_t) );
 
 
     // as in the populateBg(), we compute the histogram by subtracting/adding cols
@@ -708,9 +717,9 @@ int bhatta_estimatefg( ia_seq_t* s )
 
         // renormalize diff so that 255 = very diff, 0 = same
         // create result images
-        s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
-        s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
-        s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
+        s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
+        s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
+        s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
         s->mask[pIndex] = (s->diffImage[pos-1] > s->param->Settings.Threshold ? 255 : 0);
 
 
@@ -764,9 +773,9 @@ int bhatta_estimatefg( ia_seq_t* s )
             }
 
             // create result images     
-            s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
-            s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
-            s->diffImage[pos++] = (unsigned char) (255-(int)(diff*255));
+            s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
+            s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
+            s->diffImage[pos++] = (uint8_t) (255-(int)(diff*255));
             s->mask[pIndex] = (s->diffImage[pos-1] > s->param->Settings.Threshold ? 255 : 0);
         }
     }
@@ -814,18 +823,14 @@ static inline void copy( ia_seq_t* s )
 }
 
 #define THREADED 0
-int analyze( ia_param_t* p )
-{
-    int j, wt_status;
-    pthread_t write_thread;
 
+static inline ia_seq_t* analyze_init( ia_param_t* p )
+{
+    int j;
     ia_seq_t* ias = ia_seq_open( p );
+
     if( ias == NULL )
-    {
-        fflush( stderr );
-        fprintf( stderr,"Error opening sequence\n" );
-        return 0;
-    }
+        return NULL;
 
     /* call any init functions */
     for ( j = 0; p->filter[j] != 0; j++ )
@@ -833,19 +838,55 @@ int analyze( ia_param_t* p )
         switch ( p->filter[j] )
         {
             case COPY:
-                IA_PRINT( "copy init...\t" );
                 break;
             case DERIV:
-                IA_PRINT( "deriv init...\t" );
                 break;
             case BHATTA:
-                IA_PRINT( "bhatta init...\n" );
                 bhatta_init( ias );
+                break;
+            case DIFF:
                 break;
             default:
                 break;
         }
     }
+    return ias;
+}
+
+static inline void analyze_deinit( ia_seq_t* s )
+{
+    int j;
+
+    /* call any filter specific close functions */
+    for ( j = 0; s->param->filter[j] != 0; j++ )
+    {
+        switch ( s->param->filter[j] )
+        {
+            case COPY:
+                break;
+            case DERIV:
+                break;
+            case BHATTA:
+                bhatta_close( s );
+                break;
+            case DIFF:
+                break;
+            default:
+                break;
+        }
+    }
+
+    ia_seq_close( s );
+}
+
+int analyze( ia_param_t* p )
+{
+    int j, wt_status;
+    pthread_t write_thread;
+
+    ia_seq_t* ias = analyze_init( p );
+    if( ias == NULL )
+        return 1;
 
     wt_status = 0;
     while( ( !ia_seq_getimage(ias) ) )
@@ -871,6 +912,11 @@ int analyze( ia_param_t* p )
                 case MBOX:
                     IA_PRINT( "doing best bounding box...\n" );
                     draw_best_box( ias );
+                    break;
+                case DIFF:
+                    IA_PRINT( "doing diff...\n" );
+                    diff( ias );
+                    break;
                 default:
                     break;
             }
@@ -908,35 +954,7 @@ int analyze( ia_param_t* p )
         if( wt_status && p->output_directory[0] != 0 )
             pthread_join( write_thread,NULL );
 
-    /* call any filter specific close functions */
-    for ( j = 0; p->filter[j] != 0; j++ )
-    {
-        switch ( p->filter[j] )
-        {
-            case COPY:
-                IA_PRINT( "closing copy...\t" );
-                break;
-            case DERIV:
-                IA_PRINT( "closing deriv...\t" );
-                break;
-            case BHATTA:
-                IA_PRINT( "closing bhatta...\n" );
-                bhatta_close( ias );
-                break;
-            default:
-                break;
-        }
-    }
-
-/*
-    if( iaio_cam_close() )
-    {
-        printf( "error closing camera\n" );
-        return 1;
-    }
-*/
-
-    ia_seq_close( ias );
+    analyze_deinit( ias );
 
     return 0;
 }

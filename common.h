@@ -35,16 +35,21 @@ typedef struct
 
 typedef struct
 {
+    uint64_t    i_frame;
     ia_pixel_t* pix;
+    char        name[1024];
+
 } ia_image_t;
 
 typedef struct
 {
     ia_image_t*         iaf;        // current frame
     ia_image_t*         iar;        // result frame
+    ia_image_t**        ref;        // previous i_nref frames
+    int                 i_nrefs;    // currernt number of refs
     uint64_t            i_frame;    // position of iaf in sequence
     ia_param_t*         param;      // contains all parameters
-    char                name[1024]; // current file name
+
 
     FILE*               fin;        // input file handle
     FIBITMAP*           dib;        // used for output
@@ -52,8 +57,8 @@ typedef struct
     char*               buf;        // used for io
     iaio_cam_t          cam;        // used for video dev io
 
-    unsigned char*      mask;       // used in bhatta
-    unsigned char*      diffImage;  // bhatta
+    uint8_t*            mask;       // used in bhatta
+    uint8_t*            diffImage;  // bhatta
 } ia_seq_t;
 
 
