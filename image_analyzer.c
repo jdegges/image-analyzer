@@ -25,7 +25,6 @@ int main ( int argc,char** argv )
 
 	if ( parse_args(&param,argc,argv) != 0 )
     {
-        fprintf( stderr,"parsing error\n" );
 		return 1;
     }
     if ( analyze(&param) )
