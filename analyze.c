@@ -321,11 +321,7 @@ void fstderiv( ia_seq_t* s )
     int i, j;
     double dxr, dxg, dxb;
     double dyr, dyg, dyb;
-    double lmaxr, lmaxg, lmaxb;
-    double lminr, lming, lminb;
-    double max = 255, op;
-    lmaxr = lmaxg = lmaxb = -INT_MAX;
-    lminr = lming = lminb =  INT_MAX;
+    const double op = 255/sqrt(pow(255*3,2)*2); //  = max / (lmax - lmin)
 
     for(i = 0; i < s->param->i_height; i++)
     {
@@ -343,105 +339,73 @@ void fstderiv( ia_seq_t* s )
             dyr = dyg = dyb = 0;
 
             // left
-            dxr += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)];
-            dxg += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)];
-            dxb += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)];
+            dxr -= s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)];
+            dxg -= s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)];
+            dxb -= s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)];
 
-            dxr += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+0,0)];
-            dxg += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+0,1)];
-            dxb += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+0,2)];
+            dxr -= s->iaf->pix[offset(s->param->i_width,j-1,i+0,0)];
+            dxg -= s->iaf->pix[offset(s->param->i_width,j-1,i+0,1)];
+            dxb -= s->iaf->pix[offset(s->param->i_width,j-1,i+0,2)];
 
-            dxr += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)];
-            dxg += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)];
-            dxb += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)];
+            dxr -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)];
+            dxg -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)];
+            dxb -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)];
 
             // center
 
 
             // right
-            dxr += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)];
-            dxg += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)];
-            dxb += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)];
+            dxr += s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)];
+            dxg += s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)];
+            dxb += s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)];
 
-            dxr += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+0,0)];
-            dxg += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+0,1)];
-            dxb += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+0,2)];
+            dxr += s->iaf->pix[offset(s->param->i_width,j+1,i+0,0)];
+            dxg += s->iaf->pix[offset(s->param->i_width,j+1,i+0,1)];
+            dxb += s->iaf->pix[offset(s->param->i_width,j+1,i+0,2)];
 
-            dxr += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)];
-            dxg += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)];
-            dxb += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)];
+            dxr += s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)];
+            dxg += s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)];
+            dxb += s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)];
 
             // top
-            dyr += 1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)];
-            dyg += 1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)];
-            dyb += 1 * s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)];
+            dyr += s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)];
+            dyg += s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)];
+            dyb += s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)];
 
-            dyr += 1 * s->iaf->pix[offset(s->param->i_width,j+0,i-1,0)];
-            dyg += 1 * s->iaf->pix[offset(s->param->i_width,j+0,i-1,1)];
-            dyb += 1 * s->iaf->pix[offset(s->param->i_width,j+0,i-1,2)];
+            dyr += s->iaf->pix[offset(s->param->i_width,j+0,i-1,0)];
+            dyg += s->iaf->pix[offset(s->param->i_width,j+0,i-1,1)];
+            dyb += s->iaf->pix[offset(s->param->i_width,j+0,i-1,2)];
 
-            dyr += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)];
-            dyg += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)];
-            dyb += 1 * s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)];
+            dyr += s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)];
+            dyg += s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)];
+            dyb += s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)];
 
             // middle
 
 
             // bottom
-            dyr += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)];
-            dyg += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)];
-            dyb += -1 * s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)];
+            dyr -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)];
+            dyg -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)];
+            dyb -= s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)];
 
-            dyr += -1 * s->iaf->pix[offset(s->param->i_width,j+0,i+1,0)];
-            dyg += -1 * s->iaf->pix[offset(s->param->i_width,j+0,i+1,1)];
-            dyb += -1 * s->iaf->pix[offset(s->param->i_width,j+0,i+1,2)];
+            dyr -= s->iaf->pix[offset(s->param->i_width,j+0,i+1,0)];
+            dyg -= s->iaf->pix[offset(s->param->i_width,j+0,i+1,1)];
+            dyb -= s->iaf->pix[offset(s->param->i_width,j+0,i+1,2)];
 
-            dyr += -1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)];
-            dyg += -1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)];
-            dyb += -1 * s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)];
+            dyr -= s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)];
+            dyg -= s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)];
+            dyb -= s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)];
 
-            s->iar->pix[offset(s->param->i_width,j,i,0)] = ( sqrt(pow(dxr,2)+pow(dyr,2)) );
-            s->iar->pix[offset(s->param->i_width,j,i,1)] = ( sqrt(pow(dxg,2)+pow(dyg,2)) );
-            s->iar->pix[offset(s->param->i_width,j,i,2)] = ( sqrt(pow(dxb,2)+pow(dyb,2)) );
-
-            if( s->iar->pix[offset(s->param->i_width,j,i,0)] > lmaxr )
-                lmaxr = s->iar->pix[offset(s->param->i_width,j,i,0)];
-            if( s->iar->pix[offset(s->param->i_width,j,i,0)] < lminr )
-                lminr = s->iar->pix[offset(s->param->i_width,j,i,0)];
-
-            if( s->iar->pix[offset(s->param->i_width,j,i,1)] > lmaxg )
-                lmaxg = s->iar->pix[offset(s->param->i_width,j,i,1)];
-            if( s->iar->pix[offset(s->param->i_width,j,i,1)] < lming )
-                lming = s->iar->pix[offset(s->param->i_width,j,i,1)];
-
-            if( s->iar->pix[offset(s->param->i_width,j,i,2)] > lmaxb )
-                lmaxb = s->iar->pix[offset(s->param->i_width,j,i,2)];
-            if( s->iar->pix[offset(s->param->i_width,j,i,2)] < lminb )
-                lminb = s->iar->pix[offset(s->param->i_width,j,i,2)];
+            s->iar->pix[offset(s->param->i_width,j,i,0)] = sqrt(pow(dxr,2)+pow(dyr,2)) * op;
+            s->iar->pix[offset(s->param->i_width,j,i,1)] = sqrt(pow(dxg,2)+pow(dyg,2)) * op;
+            s->iar->pix[offset(s->param->i_width,j,i,2)] = sqrt(pow(dxb,2)+pow(dyb,2)) * op;
         }
     }
-    op = max/( lmaxr - lminr );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,0)] = (( s->iar->pix[offset(s->param->i_width,j,i,0)] - lminr ) * op);
-    op = max/( lmaxg - lming );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,1)] = (( s->iar->pix[offset(s->param->i_width,j,i,1)] - lming ) * op);
-    op = max/( lmaxb - lminb );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,2)] = (( s->iar->pix[offset(s->param->i_width,j,i,2)] - lminb ) * op);
 }
 
 void diff( ia_seq_t* s )
 {
     int i;
-    double lmaxr, lmaxg, lmaxb;
-    double lminr, lming, lminb;
-    double max = 255, op;
-    lmaxr = lmaxg = lmaxb = 255;
-    lminr = lming = lminb =  0;
 
     if( s->i_nrefs == 0 )
     {
@@ -450,19 +414,7 @@ void diff( ia_seq_t* s )
     }
     
     for(i = 0; i < s->param->i_size*3; i++)
-    {
         s->iar->pix[i] = fabs( s->iaf->pix[i] - s->ref[0]->pix[i] );
-        /*
-        if( s->iar->pix[i] > lmaxr)
-            lmaxr = s->iar->pix[i];
-        if( s->iar->pix[i] < lminr )
-            lminr = s->iar->pix[i];
-            */
-    }
-
-    op = max/(lmaxr - lminr);
-    for(i = 0; i < s->param->i_size*3; i++ )
-        s->iar->pix[i] = ( s->iar->pix[i] - lminr ) * op;
 }
 
 void bhatta_init ( ia_seq_t* s )
@@ -817,11 +769,11 @@ static inline void copy( ia_seq_t* s )
     ia_memcpy_pixel( s->iar->pix,s->iaf->pix,s->param->i_size*3 );
 }
 
-static inline void time_derivative ( ia_seq_t* s )
+static inline void flow( ia_seq_t* s )
 {
     int i, j, h, k;
-    double lmaxr, lmaxg, lmaxb, lminr, lming, lminb;
-    double dzr, dzg, dzb, op, max;
+    double lmin, op;
+    double dzr, dzg, dzb;
 
     if( s->i_nrefs < 2 )
     {
@@ -829,16 +781,15 @@ static inline void time_derivative ( ia_seq_t* s )
         return;
     }
 
-    lmaxr = lmaxg = lmaxb = (255 * 9) *  .5;
-    lminr = lming = lminb = (255 * 9) * -.5;
-    max = 255;
+    lmin = -255*9;
+    op = 255.0 / (255*9*2);  //  = max / (lmax - lmin)
 
     for ( i = 0; i < s->param->i_height; i++ )
     {
         for ( j = 0; j < s->param->i_width; j++)
         {
 
-            if ( i == 0 || j == 0 || j == s->param->i_height-1 || i == s->param->i_width-1 )
+            if ( i == 0 || j == 0 || j == s->param->i_width-1 || i == s->param->i_height-1 )
             {
                 s->iar->pix[offset(s->param->i_width,j,i,0)] =
                 s->iar->pix[offset(s->param->i_width,j,i,1)] =
@@ -852,49 +803,19 @@ static inline void time_derivative ( ia_seq_t* s )
                 for( k = j-1; k < j+1; k++ )
                 {
                     dzr += (s->iaf->pix[offset(s->param->i_width,k,h,0)]
-                         - s->ref[1]->pix[offset(s->param->i_width,k,h,0)]) * .5;
+                         - s->ref[1]->pix[offset(s->param->i_width,k,h,0)]);
                     dzg += (s->iaf->pix[offset(s->param->i_width,k,h,1)]
-                         - s->ref[1]->pix[offset(s->param->i_width,k,h,1)]) * .5;
+                         - s->ref[1]->pix[offset(s->param->i_width,k,h,1)]);
                     dzb += (s->iaf->pix[offset(s->param->i_width,k,h,2)]
-                         - s->ref[1]->pix[offset(s->param->i_width,k,h,2)]) * .5;
+                         - s->ref[1]->pix[offset(s->param->i_width,k,h,2)]);
                 }
             }
 
-            s->iar->pix[offset(s->param->i_width,j,i,0)] = dzr;
-            s->iar->pix[offset(s->param->i_width,j,i,1)] = dzg;
-            s->iar->pix[offset(s->param->i_width,j,i,2)] = dzb;
-
-/*
-            if( dzr > lmaxr )
-                lmaxr = dzr;
-            if( dzr < lminr )
-                lminr = dzr;
-
-            if( dzg > lmaxg )
-                lmaxg = dzg;
-            if( dzg < lming )
-                lming = dzg;
-
-            if( dzb > lmaxb )
-                lmaxb = dzb;
-            if( dzb < lminb )
-                lminb = dzb;
-                */
+            s->iar->pix[offset(s->param->i_width,j,i,0)] = ( dzr - lmin ) * op;
+            s->iar->pix[offset(s->param->i_width,j,i,1)] = ( dzg - lmin ) * op;
+            s->iar->pix[offset(s->param->i_width,j,i,2)] = ( dzb - lmin ) * op;
         }
     }
-
-    op = max/( lmaxr - lminr );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,0)] = (( s->iar->pix[offset(s->param->i_width,j,i,0)] - lminr ) * op);
-    op = max/( lmaxg - lming );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,1)] = (( s->iar->pix[offset(s->param->i_width,j,i,1)] - lming ) * op);
-    op = max/( lmaxb - lminb );
-    for( i = 0; i < s->param->i_height; i++ )
-        for( j = 0; j < s->param->i_width; j++ )
-            s->iar->pix[offset(s->param->i_width,j,i,2)] = (( s->iar->pix[offset(s->param->i_width,j,i,2)] - lminb ) * op);
 }
 
 #define IA_PRINT( s )\
@@ -1000,7 +921,7 @@ int analyze( ia_param_t* p )
                     break;
                 case FLOW:
                     IA_PRINT( "doing flow...\n" );
-                    time_derivative( ias );
+                    flow( ias );
                 default:
                     break;
             }
