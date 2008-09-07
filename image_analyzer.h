@@ -15,6 +15,7 @@ typedef struct
     int i_size;     // width*height
     int i_width;
     int i_height;
+    int i_mb_size; 
     int b_verbose;
     int b_vdev;     // true if capturing from video device
 

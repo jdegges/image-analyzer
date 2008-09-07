@@ -58,6 +58,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     strncpy( p->video_device,"/dev/video0",1024 );
     strncpy( p->ext,"bmp",16 );
 
+    p->i_mb_size = 15;
     p->i_maxrefs = 4;
     p->i_size = 0;
     p->b_verbose = 0;
@@ -90,7 +91,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			{"input"        ,1,0,0},
 			{"output"       ,1,0,0},
 			{"filter"       ,1,0,0},
-			{"block-size"   ,1,0,0},
+			{"mb-size"      ,1,0,0},
 			{"pretty"       ,0,0,0},
 			{"stats"        ,0,0,0},
 			{"help"         ,0,0,0},
@@ -152,6 +153,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		}
 		else if ( (option_index == 3 && c == 0) || (option_index == 0 && c == 'b') )
 		{
+            p->i_mb_size = strtoul( optarg,NULL,10 );
 		}
 		else if ( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
 		{
@@ -222,6 +224,7 @@ void usage ( void )
     printf ( "  -w, --width <int>               Image width, must be specified in video capture mode\n" );
     printf ( "  -h, --height <int>              Image height, must be specified in video capture mode\n" );
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
+    printf ( "  -b, --mb-size <int>             Macroblock size to use in filters that use macroblocks [15]\n" );
     printf ( "\n" );
 	printf ( "  -s, --stats                     Calculates and prints statistics\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );
