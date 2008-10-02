@@ -379,6 +379,41 @@ void diff( ia_seq_t* s )
         s->iar->pix[i] = fabs( s->iaf->pix[i] - s->ref[0]->pix[i] );
 }
 
+void monkey( ia_seq_t* s )
+{
+    int i,j;
+    ia_pixel_t dev, avg;
+
+    if( s->i_nrefs < s->param->i_maxrefs )
+    {
+        ia_memset( s->iar->pix,0,sizeof(ia_pixel_t)*s->param->i_size*3 );
+        return;
+    }
+
+    i = s->param->i_size*3-1;
+    while( i-- )
+    {
+        avg = s->iaf->pix[i];
+        j = s->i_nrefs-1;
+        while( j-- )
+            avg += s->ref[j]->pix[i];
+
+        avg /= ( s->i_nrefs + 1 );
+
+        dev = ia_abs( avg - s->iaf->pix[i] );
+        s->iar->pix[i] = s->iaf->pix[i];
+        j = s->i_nrefs-1;
+        while( j-- )
+        {
+            if( ia_abs(avg-s->ref[j]->pix[i]) > dev )
+            {
+                dev = ia_abs(avg-s->ref[j]->pix[i]);
+                s->iar->pix[i] = s->ref[j]->pix[i];
+            }
+        }
+    }
+}
+
 void bhatta_init ( ia_seq_t* s )
 {
     int i, cb, cg;
@@ -1053,6 +1088,10 @@ int analyze( ia_param_t* p )
                     IA_PRINT( "doing sad...\n" );
                     sad( ias );
                     break;
+                case MONKEY:
+                    IA_PRINT( "doing monkey...\n" );
+                    monkey( ias );
+                    break;
                 default:
                     break;
             }
@@ -1081,9 +1120,6 @@ int analyze( ia_param_t* p )
             if( p->output_directory[0] != 0 )
                 ia_seq_saveimage( ias );
         }
-
-        if( ias->i_frame > 500 )
-            return 0;
     }
 
     if( THREADED )

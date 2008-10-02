@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <FreeImage.h>
+#include <math.h>
 
 #include "image_analyzer.h"
 
@@ -202,6 +203,11 @@ static inline int ia_fclose( FILE* fp )
 static inline int clip_uint8( int v )
 {
     return ( (v < 0) ? 0 : (v > 255) ? 255 : v );
+}
+
+static inline ia_pixel_t ia_abs( ia_pixel_t v )
+{
+    return fabs( v );
 }
 
 #endif

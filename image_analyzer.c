@@ -114,7 +114,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"diff"},
             {"bhatta"},
             {"copy"},
-            {"mbox"}
+            {"mbox"},
+            {"monkey"}
 		};
 
 		c = getopt_long ( argc,argv,"i:o:f:b:pshc:r:vd:",long_options,&option_index );
@@ -136,12 +137,12 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			fltr = strtok ( optarg,"," );
 			for ( c = 0; c < 10 && fltr != NULL; c++ )
 			{
-				for ( i = 0; i < 11; i++ )
+				for ( i = 0; i < 12; i++ )
 				{
 					if ( strcmp(fltr,filters[i]) == 0 )
 						break;
 				}
-				if ( i >= 11 )
+				if ( i >= 12 )
 				{
 					fprintf ( stderr,"Unknown filter %s\n",fltr );
 					usage ();
@@ -220,7 +221,7 @@ void usage ( void )
     printf ( "  -d, --video-device <string>     Video device to capture images from [/dev/video0]\n" );
 	printf ( "\n" );
 	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence\n" );
-	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,curv,ssd,me,blobs\n" );
+	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,curv,ssd,me,blobs,monkey\n" );
     printf ( "  -w, --width <int>               Image width, must be specified in video capture mode\n" );
     printf ( "  -h, --height <int>              Image height, must be specified in video capture mode\n" );
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );

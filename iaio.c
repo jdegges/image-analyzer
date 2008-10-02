@@ -53,6 +53,9 @@ int iaio_getimage ( char* str,ia_image_t* iaf )
 		return 1;
     }
 
+    dib24 = FreeImage_ConvertToGreyscale( dib );
+    FreeImage_Unload( dib );
+    dib = dib24;
     dib24 = FreeImage_ConvertTo24Bits( dib );
     FreeImage_Unload( dib );
     dib = dib24;
