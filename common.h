@@ -28,7 +28,7 @@ typedef struct
     char        name[1024];
     uint8_t     users;
     bool        ready;
-    bool        lock;
+    pthread_mutex_t mutex;
 } ia_image_t;
 
 static inline int ia_select( int n, fd_set* r, fd_set* w, fd_set* e, struct timeval* t )

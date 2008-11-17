@@ -28,15 +28,9 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
             if( ias->ref[k]->i_frame == start )
             {
                 iaf = ias->ref[k];
-            
+
                 /* get lock on image */
-                for( ;; ) {
-                    if( !iaf->lock ) {
-                        iaf->lock = true;
-                        break;
-                    }
-                    usleep( 10 );
-                }
+                pthread_mutex_lock( &iaf->mutex );
 
                 if( iaf->ready && iaf->i_frame == start ) {
                     iaf->users++;
@@ -49,7 +43,7 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
                 }
 
                 /* unlock image */
-                iaf->lock = false;
+                pthread_mutex_unlock( &iaf->mutex );
             }
             else
                 usleep( 10 );
@@ -69,16 +63,13 @@ inline void ia_seq_close_input_bufs( ia_image_t** iab, uint8_t size )
     do
     {
         /* get lock on image */
-        for( ;; ) {
-            if( !iab[size]->lock ) {
-                iab[size]->lock = true;
-                break;
-            }
-            usleep( 10 );
-        }
+        pthread_mutex_lock( &iab[size]->mutex );
+
         iab[size]->users--;
         iab[size]->ready = false;
-        iab[size]->lock = false;
+
+        /* unlock image */
+        pthread_mutex_unlock( &iab[size]->mutex );
         s--;
     } while( s > 0 );
 
@@ -106,13 +97,7 @@ ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
                 iaf = ias->out[k];
 
                 /* get lock on image */
-                for( ;; ) {
-                    if( !iaf->lock ) {
-                        iaf->lock = true;
-                        break;
-                    }
-                    usleep( 10 );
-                }
+                pthread_mutex_lock( &iaf->mutex );
 
                 /* if the buffer is available -> claim it */
                 if( !iaf->ready && iaf->users == 0 ) {
@@ -122,7 +107,7 @@ ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
                 }
 
                 /* unlock image */
-                iaf->lock = false;
+                pthread_mutex_unlock( &iaf->mutex );
             }
             else
                 usleep( 10 );
@@ -141,17 +126,13 @@ inline void ia_seq_close_output_bufs( ia_image_t** iab, uint8_t size )
     while( size-- )
     {
         /* get lock on image */
-        for( ;; ) {
-            if( !iab[size]->lock ) {
-                iab[size]->lock = true;
-                break;
-            }
-            usleep( 10 );
-        }
+        pthread_mutex_lock( &iab[size]->mutex );
 
         iab[size]->users--;
         iab[size]->ready = true;
-        iab[size]->lock = false;
+
+        /* unlock image */
+        pthread_mutex_unlock( &iab[size]->mutex );
     }
 
     free( iab );
@@ -171,17 +152,10 @@ void* ia_seq_manage_input( void* vptr )
 
     /* while there is more input */
     for( ;; ) {
-        /* get lock on oldest ref */
-        for( ;; ) {
-            if( !ias->ref[i_maxrefs]->lock ) {
-                ias->ref[i_maxrefs]->lock = true;
-                break;
-            }
-            usleep( 10 );
-        }
-
         iaf = ias->ref[i_maxrefs];
 
+        /* get lock on oldest ref */
+        pthread_mutex_lock( &iaf->mutex );
 
         /* if no one is using the ref, shift ref-list
          * down and replace with new frame */
@@ -201,7 +175,7 @@ void* ia_seq_manage_input( void* vptr )
             {
                 fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
                 ias->iaio->eoi = true;
-                iaf->lock = false;
+                pthread_mutex_unlock( &iaf->mutex );
                 pthread_cancel( ias->tio[1] );
                 pthread_exit( NULL );
             }
@@ -210,8 +184,8 @@ void* ia_seq_manage_input( void* vptr )
             cframe++;
             iaf->ready = true;
         }
-        iaf->lock = false;
-        usleep( 10 );
+
+        pthread_mutex_unlock( &iaf->mutex );
     }
 }
 
@@ -238,28 +212,20 @@ void* ia_seq_manage_output( void* vptr )
             iar = ias->out[i];
 
             /* get lock on output buffer */
-            for( ;; ) {
-                if( !iar->lock ) {
-                    iar->lock = true;
-                    break;
-                }
-                usleep( 10 );
-            }
+            pthread_mutex_lock( &iar->mutex );
 
             /* verify that its ready to be written -> write it out */
             if( iar->ready && iar->users == 0 ) {
                 /* if error/nospc -> exit */
                 if( iaio_saveimage(ias->iaio, iar) ) {
+                    pthread_mutex_unlock( &iar->mutex );
                     pthread_exit( NULL );
                 }
                 iar->ready = false;
             }
-            else {
-                usleep( 10 );
-            }
 
             /* free up the lock */
-            iar->lock = false;
+            pthread_mutex_unlock( &iar->mutex );
         }
         //usleep( 10 );
     }
@@ -332,6 +298,7 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         s->ref[i]->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
         if( s->ref[i]->pix == NULL )
             return NULL;
+        pthread_mutex_init( &s->ref[i]->mutex, NULL );
     }
 
     /* allocate output buffers */
@@ -347,6 +314,7 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         s->out[i]->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
         if( s->out[i]->pix == NULL )
             return NULL;
+        pthread_mutex_init( &s->out[i]->mutex, NULL );
     }
 
     s->i_frame = 0;
@@ -388,6 +356,9 @@ inline void ia_seq_close( ia_seq_t* s )
 
     while( s->param->i_maxrefs-- )
     {
+        pthread_mutex_destroy( &s->ref[s->param->i_maxrefs]->mutex );
+        pthread_mutex_destroy( &s->out[s->param->i_maxrefs]->mutex );
+
         ia_free( s->ref[s->param->i_maxrefs]->pix );
         ia_free( s->ref[s->param->i_maxrefs] );
 
