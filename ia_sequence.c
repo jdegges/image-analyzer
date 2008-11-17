@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <errno.h>
 //#include <stdlib.h>
 //#include <string.h>
 
@@ -7,226 +10,393 @@
 #include "iaio.h"
 #include "ia_sequence.h"
 
-#define RANGE 5
-
-#define CAM 1
-
-/* retval
- * 1: error
- * 0: ok
- */
-int ia_seq_getimage ( ia_seq_t* s )
+ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size )
 {
-    // keep ref list up to date
-    if( s->i_frame == 0 || s->param->i_maxrefs == 0 )
-    {
+    ia_image_t** iab = malloc( sizeof(ia_image_t*)*size );
+    if( iab == NULL ) {
+        printf("ERROR\n");
+        return NULL;
     }
-    else if( s->i_nrefs == s->param->i_maxrefs )
-    {
-        int i;
-        ia_image_t* tmp = s->iaf;
-        s->iaf = s->ref[s->i_nrefs-1];
-        i = s->i_nrefs-1;
-        while( i-- )
-            s->ref[i+1] = s->ref[i];
-        s->ref[0] = tmp;
-    }
-    else if( s->i_nrefs < s->param->i_maxrefs )
-    {
-        int i;
-        ia_image_t* tmp = s->iaf;
-        s->iaf = ia_malloc( sizeof(ia_image_t) );
-        if( s->iaf == NULL )
-            return 1;
-        s->iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-        if( s->iaf->pix == NULL )
-            return 1;
-        i = s->i_nrefs;
-        while( i-- )
-            s->ref[i+1] = s->ref[i];
-        s->ref[0] = tmp;
-        s->i_nrefs++;
-    }
-    else
-    {
-        return 1;
-    }
+    ia_image_t* iaf;
+    int i = 0, k;
 
+    if( size > ias->param->i_maxrefs )
+        return NULL;
 
-    if( s->param->b_vdev )
-    {
-        if( iaio_cam_getimage(s) < 0 )
-        {
-            fprintf( stderr,"Error getting image from the cam\n" );
-            return 1;
+    while( i < size ) {
+        for( k = 0; k < ias->param->i_maxrefs; k++ ) {
+            if( ias->ref[k]->i_frame == start )
+            {
+                iaf = ias->ref[k];
+            
+                /* get lock on image */
+                for( ;; ) {
+                    if( !iaf->lock ) {
+                        iaf->lock = true;
+                        break;
+                    }
+                    usleep( 10 );
+                }
+
+                if( iaf->ready && iaf->i_frame == start ) {
+                    iaf->users++;
+                    iab[i++] = iaf;
+                    start--;
+                }
+                else
+                {
+                    printf("the inb i need isnt ready\n"); fflush(stdout);
+                }
+
+                /* unlock image */
+                iaf->lock = false;
+            }
+            else
+                usleep( 10 );
+
         }
     }
-    else
-    {
-        if( ia_fgets(s->buf,1024,s->fin) == NULL )
-            return 1;
+    return iab;
+}
 
-        s->buf = ia_strtok( s->buf,"\n" );
-        if( iaio_getimage(s->buf,s->iaf) )
-        {
-            fprintf( stderr,"Error getting image data\n" );
-            return 1;
+inline void ia_seq_close_input_bufs( ia_image_t** iab, uint8_t size )
+{
+    int s = (int) size;
+    if( iab == NULL ) return;
+    printf("%u %u %u\n",size,size,size );
+
+    size--;
+    do
+    {
+        /* get lock on image */
+        for( ;; ) {
+            if( !iab[size]->lock ) {
+                iab[size]->lock = true;
+                break;
+            }
+            usleep( 10 );
         }
-    }
-    snprintf( s->iar->name,1024,"%s/image-%010lld.%s",s->param->output_directory,++s->i_frame,s->param->ext );
-    s->iar->i_frame = s->iaf->i_frame = s->i_frame;
+        iab[size]->users--;
+        iab[size]->ready = false;
+        iab[size]->lock = false;
+        s--;
+    } while( s > 0 );
 
-    return 0;
+//    ia_free( iab );
 }
 
-int ia_seq_probelist( ia_seq_t* s )
+ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
 {
-    if( ia_fgets(s->buf,1024,s->fin) == NULL )
-    {
-        fprintf( stderr,"Error reading image file name form input file\n" );
-        return 1;
-    }
+    ia_image_t** iab = malloc( sizeof(ia_image_t*)*size );
+    ia_image_t* iaf;
+    int i, k;
 
-    s->buf = ia_strtok( s->buf,"\n" );
-    if( iaio_probeimage(s,s->buf) )
-    {
-        fprintf( stderr,"Error opening image\n" );
-        return 1;
-    }
-    return 0;
+    i = k = 0;
+
+    if( size > ias->param->i_maxrefs )
+        return NULL;
+
+    /* acquire size output buffers */
+    do {
+        /* for each possible output buffer */
+        for( k = 0; k < ias->param->i_maxrefs; k++ ) {
+            /* if there is a chance this buffer is not being used */
+            if( !ias->out[k]->ready && ias->out[k]->users == 0 )
+            {
+                iaf = ias->out[k];
+
+                /* get lock on image */
+                for( ;; ) {
+                    if( !iaf->lock ) {
+                        iaf->lock = true;
+                        break;
+                    }
+                    usleep( 10 );
+                }
+
+                /* if the buffer is available -> claim it */
+                if( !iaf->ready && iaf->users == 0 ) {
+                    iaf->users++;
+                    iab[i++] = iaf;
+                    snprintf(iaf->name,1024,"image-%05lld.bmp",num);
+                }
+
+                /* unlock image */
+                iaf->lock = false;
+            }
+            else
+                usleep( 10 );
+
+            if( i >= size )
+                break;
+        }
+    } while( i < size );
+    return iab;
 }
 
-void* ia_seq_saveimage( void* ptr )
+inline void ia_seq_close_output_bufs( ia_image_t** iab, uint8_t size )
 {
-    iaio_saveimage( (ia_seq_t*)ptr );
-    return NULL;
+    if( iab == NULL ) return;
+
+    while( size-- )
+    {
+        /* get lock on image */
+        for( ;; ) {
+            if( !iab[size]->lock ) {
+                iab[size]->lock = true;
+                break;
+            }
+            usleep( 10 );
+        }
+
+        iab[size]->users--;
+        iab[size]->ready = true;
+        iab[size]->lock = false;
+    }
+
+    free( iab );
 }
 
 /*
-ia_image_t* ia_seq_copyimage( ia_image_t* iaf )
+ * ia_seq_manage_input:
+ *  vptr: an ia_sequence_t* data structure
+ * keeps ref list up to-date by replacing old refs with newly captuerd frames
+ */
+void* ia_seq_manage_input( void* vptr )
 {
-    ia_image_t* iar = (ia_image_t*) malloc ( sizeof(ia_image_t) );
-    memcpy( iar,iaf,sizeof(iaf) );
-    strncpy( iar->name,iaf->name,100 );
-    iar->pix = (ia_pixel_t*) malloc ( sizeof(ia_pixel_t)*iar->width*iar->height );
-    memset( iar->pix,0,sizeof(ia_pixel_t)*iar->width*iar->height );
-    return iar;
+    ia_seq_t* ias = (ia_seq_t*) vptr;
+    ia_image_t* iaf;
+    uint64_t i_maxrefs = ias->param->i_maxrefs - 1;
+    uint64_t cframe = 0;
+
+    /* while there is more input */
+    for( ;; ) {
+        /* get lock on oldest ref */
+        for( ;; ) {
+            if( !ias->ref[i_maxrefs]->lock ) {
+                ias->ref[i_maxrefs]->lock = true;
+                break;
+            }
+            usleep( 10 );
+        }
+
+        iaf = ias->ref[i_maxrefs];
+
+
+        /* if no one is using the ref, shift ref-list
+         * down and replace with new frame */
+        if( iaf->users == 0 && !iaf->ready ) {
+            int i;
+            i = i_maxrefs;
+
+
+            /* shift refs down */
+            while( i-- ) {
+                ias->ref[i+1] = ias->ref[i];
+             }
+            ias->ref[0] = iaf;
+
+            /* capture new frame, if error/eof -> exit */
+            if( iaio_getimage(ias->iaio, iaf) )
+            {
+                fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
+                ias->iaio->eoi = true;
+                iaf->lock = false;
+                pthread_cancel( ias->tio[1] );
+                pthread_exit( NULL );
+            }
+            snprintf( ias->ref[0]->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, cframe, ias->param->ext );
+            ias->ref[0]->i_frame = ias->i_frame = cframe;
+            cframe++;
+            iaf->ready = true;
+        }
+        iaf->lock = false;
+        usleep( 10 );
+    }
 }
-*/
+
+/*
+ * ia_seq_manage_output:
+ *  vptr: an ia_sequence_t* data structure
+ * writes all output buffers to disk and free's up the output buffer entry
+ */
+void* ia_seq_manage_output( void* vptr )
+{
+    ia_seq_t* ias = (ia_seq_t*) vptr;
+    ia_image_t* iar;
+    uint64_t i, i_maxrefs = ias->param->i_maxrefs;
+
+    /* while there is more output */
+    for( ;; ) {
+        for( i = 0; i < i_maxrefs; i++ ) {
+            /* if the output buffer isnt ready to be written -> continue */
+            if( !ias->out[i]->ready || ias->out[i]->users != 0 ) {
+                //usleep( 1 );
+                continue;
+            }
+
+            iar = ias->out[i];
+
+            /* get lock on output buffer */
+            for( ;; ) {
+                if( !iar->lock ) {
+                    iar->lock = true;
+                    break;
+                }
+                usleep( 10 );
+            }
+
+            /* verify that its ready to be written -> write it out */
+            if( iar->ready && iar->users == 0 ) {
+                /* if error/nospc -> exit */
+                if( iaio_saveimage(ias->iaio, iar) ) {
+                    pthread_exit( NULL );
+                }
+                iar->ready = false;
+            }
+            else {
+                usleep( 10 );
+            }
+
+            /* free up the lock */
+            iar->lock = false;
+        }
+        //usleep( 10 );
+    }
+}
+
+/*
+ * ia_seq_end:
+ *  vptr: ia_sequence_t* data structure
+ * clean up io threads if the end of input has been reached
+ */
+bool ia_seq_has_more_input( ia_seq_t* ias, uint64_t pos ) {
+//printf("chcking for more input\n");
+    if( ias->iaio->eoi ) {
+        int rc;
+        for( rc = 0; rc < ias->param->i_maxrefs; rc++ ) {
+            if( pos > ias->ref[rc]->i_frame ) {
+
+
+                printf("no more input\n");
+
+                printf("pthread ESRCH = %d\n",ESRCH);
+                rc = pthread_cancel( ias->tio[0] );
+                printf("pthread_cancel errcode: %d\n",rc );
+        
+                /* wait a little bit before killing the output manager */
+                usleep( 50 );
+                rc = pthread_cancel( ias->tio[1] );
+                printf( "pthread_cancel errcode: %d\n", rc );
+                
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
 
 /* initialize a new ia_seq */
 ia_seq_t*   ia_seq_open( ia_param_t* p )
 {
+    int i, rc;
+
+    /* allocate/initialize sequence object */
     ia_seq_t* s = (ia_seq_t*) ia_malloc( sizeof(ia_seq_t) );
-    if( s == NULL )
+    if( s == NULL ) {
+        fprintf( stderr, "ERROR: ia_seq_open(): couldnt alloc ia_seq_t*\n" );
         return NULL;
+    }
 
     ia_memset( s,0,sizeof(ia_seq_t) );
     s->param = p;
 
-    s->iaf = (ia_image_t*) ia_malloc( sizeof(ia_image_t) );
-    if( s->iaf == NULL )
+    s->iaio = iaio_open( s );
+    if( s->iaio == NULL )
     {
-        fprintf( stderr,"Error allocating new image\n" );
+        fprintf( stderr, "ERROR: ia_seq_open(): couldnt open iaio_t object\n" );
         return NULL;
     }
 
-    s->iar = (ia_image_t*) ia_malloc( sizeof(ia_image_t) );
-    if( s->iar == NULL )
-    {
-        fprintf( stderr,"Error allocating new image\n" );
-        return NULL;
-    }
-
-    s->buf = (char*) ia_malloc( sizeof(char)*1024 );
-    if( s->buf == NULL )
-    {
-        fprintf( stderr,"Error allocating mem for buf\n" );
-        return NULL;
-    }
-
-    /* if image names are being read from an input file
-     * then probe first image to figure out width and height */
-    if( !s->param->b_vdev )
-    {
-        s->fin = ia_fopen( s->param->input_file, "r" );
-        if( s->fin == NULL )
-        {
-            fprintf( stderr,"Error opening input file\n" );
-            return NULL;
-        }
-
-        if( ia_seq_probelist(s) )
-        {
-            fprintf( stderr,"Error getting image\n" );
-            return NULL;
-        }
-    
-        ia_fclose( s->fin );
-        s->fin = ia_fopen( s->param->input_file, "r" );
-        if( s->fin == NULL )
-        {
-            fprintf( stderr,"Error opening input file\n" );
-            return NULL;
-        }
-    }
-    else
-    {
-        if( iaio_cam_init(s) < 0 )
-        {
-            fprintf( stderr,"Error initializing camera\n" );
-            return NULL;
-        }
-    }
-
-    ia_memset( s->iaf,0,sizeof(ia_image_t) );
-    ia_memset( s->iar,0,sizeof(ia_image_t) );
-
-    s->iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-    if( s->iaf->pix == NULL )
-        return NULL;
-
-    s->iar->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-    if( s->iar->pix == NULL )
-        return NULL;
-
+    /* allocate input buffers */
     s->ref = (ia_image_t**) ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
     if( s->ref == NULL )
         return NULL;
+    i = s->param->i_maxrefs;
+    while( i-- ) {
+        s->ref[i] = ia_malloc( sizeof(ia_image_t) );
+        if( s->ref[i] == NULL )
+            return NULL;
+        ia_memset( s->ref[i], 0, sizeof(ia_image_t) );
+        s->ref[i]->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
+        if( s->ref[i]->pix == NULL )
+            return NULL;
+    }
 
-    s->i_nrefs = 0;
+    /* allocate output buffers */
+    s->out = ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
+    if( s->out == NULL )
+        return NULL;
+    i = s->param->i_maxrefs;
+    while( i-- ) {
+        s->out[i] = ia_malloc( sizeof(ia_image_t) );
+        if( s->out[i] == NULL )
+            return NULL;
+        ia_memset( s->out[i], 0, sizeof(ia_image_t) );
+        s->out[i]->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
+        if( s->out[i]->pix == NULL )
+            return NULL;
+    }
+
     s->i_frame = 0;
-    s->dib = FreeImage_AllocateT( FIT_BITMAP,s->param->i_width,s->param->i_height,24,FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
+
+    pthread_attr_init( &s->attr );
+    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
+
+    rc = pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s );
+    if( rc )
+    {
+        fprintf( stderr, "ERROR: ia_seq_open(): return code from pthread_create() is %d\n", rc );
+        return NULL;
+    }
+
+    rc = pthread_create( &s->tio[1], &s->attr, &ia_seq_manage_output, (void*) s );
+    if( rc )
+    {
+        fprintf( stderr, "ERROR: ia_seq_open(): return code from pthread_create() is %d\n", rc );
+        return NULL;
+    }
 
     return s;
 }
 
 inline void ia_seq_close( ia_seq_t* s )
 {
-    FreeImage_Unload( s->dib );
+    pthread_attr_destroy( &s->attr );
 
-    if( !s->param->b_vdev )
-        ia_fclose( s->fin );
-    else
+    pthread_cancel( s->tio[0] );
+    pthread_cancel( s->tio[1] );
+
+    printf("closing iaio\n");
+    fflush(stdout);
+
+    iaio_close( s->iaio );
+
+    printf("freeing buffers\n");
+    fflush(stdout);
+
+    while( s->param->i_maxrefs-- )
     {
-        if( iaio_cam_close(s) )
-            fprintf( stderr,"Error closing camera\n" );
+        ia_free( s->ref[s->param->i_maxrefs]->pix );
+        ia_free( s->ref[s->param->i_maxrefs] );
+
+        ia_free( s->out[s->param->i_maxrefs]->pix );
+        ia_free( s->out[s->param->i_maxrefs] );
     }
 
-    while( s->i_nrefs-- )
-    {
-        ia_free( s->ref[s->i_nrefs]->pix );
-        ia_free( s->ref[s->i_nrefs] );
-    }
     ia_free( s->ref );
-
-    ia_free( s->iaf->pix );
-    ia_free( s->iaf );
-
-    ia_free( s->iar->pix );
-    ia_free( s->iar );
-
-    ia_free( s->buf );
+    ia_free( s->out );
 
     ia_free( s );
 }

@@ -9,7 +9,7 @@ typedef struct
     char output_directory[1024];
     char video_device[1024];
     char ext[16];
-    int filter[15];
+    int filter[20];
 
     int i_maxrefs;  // maximum number of refs to keep in memory
     int i_size;     // width*height

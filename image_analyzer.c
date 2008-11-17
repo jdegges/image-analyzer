@@ -10,7 +10,6 @@
 
 #include "common.h"
 #include "analyze.h"
-#include "ia_sequence.h"
 
 int parse_args ( ia_param_t* p,int argc,char** argv );
 

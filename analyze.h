@@ -1,7 +1,6 @@
 #ifndef _H_ANALYZE
 #define _H_ANALYZE
 
-#include "ia_sequence.h"
 #include "image_analyzer.h"
 
 /* FILTER Indexes */
