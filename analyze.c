@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <errno.h>
 
 #include "common.h"
 #include "iaio.h"
@@ -1052,8 +1053,13 @@ void* analyze_exec( void* vptr )
 {
     int j;
     ia_exec_t* iax = (ia_exec_t*) vptr;
+//    printf("getting bufs for %lld\n",iax->current_frame);
     ia_image_t** iaf = ia_seq_get_input_bufs( iax->ias, iax->current_frame, 1 );
+    if( iaf == NULL )
+        pthread_exit( NULL );
+//    printf("got input bufs for %lld\n",iax->current_frame);
     ia_image_t** iar = ia_seq_get_output_bufs( iax->ias, 1, iax->current_frame );
+//    printf("got output bufs %lld\n",iax->current_frame);
     if( iaf == NULL || iar == NULL )
         pthread_exit( NULL );
     for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
@@ -1068,21 +1074,28 @@ void* analyze_exec( void* vptr )
         }
     }
 
+//    printf("closing bufs for %lld\n",iax->current_frame);
     ia_seq_close_input_bufs( iaf, 1 );
+//    printf("closed input bufs for %lld\n",iax->current_frame);
     ia_seq_close_output_bufs( iar, 1 );
+//    printf("closed output bufs for %lld\n",iax->current_frame);
 
     free( iax );
     pthread_exit( NULL );
 }
 
-#define MAX_THREADS 4
+#define MAX_THREADS 8
 
 int analyze( ia_param_t* p )
 {
     int wt_status, tc = 0, rc;
     void* status;
     uint64_t current_frame = 0;
+    uint8_t last;
     pthread_t my_threads[MAX_THREADS];
+    pthread_attr_t attr;
+    pthread_attr_init( &attr );
+    pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE );
 
     ia_seq_t* ias = analyze_init( p );
     printf("finished analyze_init()\n");
@@ -1091,7 +1104,11 @@ int analyze( ia_param_t* p )
         return 1;
     }
 
+printf("EAGAIN = %d\n",EAGAIN);
+printf("EINVAL = %d\n",EINVAL);
+printf("EPERM  = %d\n", EPERM);
     wt_status = 0;
+    last = 0;
     while( ia_seq_has_more_input(ias, current_frame) )
     {
         ia_exec_t* iax = malloc( sizeof(ia_exec_t) );
@@ -1101,17 +1118,19 @@ int analyze( ia_param_t* p )
         iax->ias = ias;
         iax->current_frame = current_frame++;
         iax->size = 1;
-printf("doing frame %lld\n",current_frame );
-        if( tc >= MAX_THREADS ) {
-            tc = 0;
+//printf("doing frame %lld\n",current_frame );
+        if( current_frame > MAX_THREADS) {
+            if( tc >= MAX_THREADS ) tc = 0;
             pthread_join( my_threads[tc], &status );
-            printf("closing thread %d\n", tc );
+
+//            printf("closing thread %d\n", tc );
         }
 
-        rc = pthread_create( &my_threads[tc++], &ias->attr, &analyze_exec, (void*) iax );
-        printf("spawning thread %d\n",tc-1);
+        rc = pthread_create( &my_threads[tc++], &attr, &analyze_exec, (void*) iax );
+//        printf("spawning thread %d\n",tc-1);
         if( rc ) {
-            fprintf( stderr, "ERROR: return code form pthread_create() is %d\n", rc );
+            fprintf( stderr, "ERROR: return code form pthread_create() is aa %d\n", rc );
+            fprintf( stderr, "%s\n",strerror(rc));
             return 1;
         }
 

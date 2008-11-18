@@ -44,6 +44,7 @@ typedef struct iaio_t
     iaio_file_t     fin;        // for file io
 
     FIBITMAP*   dib;            // buffer for writing images to disk
+    uint64_t    last_frame;
     uint32_t    i_size;
     uint32_t    i_width;
     uint32_t    i_height;

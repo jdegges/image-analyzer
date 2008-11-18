@@ -27,6 +27,9 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
 
     for( j = 0; j < size; ) {
         for( k = 0; k < ias->param->i_maxrefs; k++ ) {
+            if( ias->iaio->eoi && ias->iaio->last_frame <= start ) {
+                return NULL;
+            }
             if( !ias->ref[k]->ready ) {
                 usleep( 10 );
                 continue;
@@ -48,11 +51,11 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
                     iab[i++] = iaf;
                     frameno--;
                     j++;
-                    printf("grabbed image %lld for processing. has %d users\n",iaf->i_frame,iaf->users);
+//                    printf("grabbed image %lld for processing. has %d users\n",iaf->i_frame,iaf->users);
                 }
                 else
                 {
-                    printf("the inb i need isnt ready\n"); fflush(stdout);
+//                    printf("the inb i need isnt ready\n"); fflush(stdout);
                 }
 
                 /* unlock image */
@@ -96,7 +99,7 @@ inline void ia_seq_close_input_bufs( ia_image_t** iab, int8_t size )
         }
     }
 
-    //ia_free( iab );
+    ia_free( iab );
 }
 
 ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
@@ -264,9 +267,10 @@ void* ia_seq_manage_input( void* vptr )
             {
                 fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
                 ias->iaio->eoi = true;
+                ias->iaio->last_frame = cframe;
                 pthread_mutex_unlock( &iaf->mutex );
-                ia_seq_wait_for_output( ias );
-                pthread_cancel( ias->tio[1] );
+//                ia_seq_wait_for_output( ias );
+//                pthread_cancel( ias->tio[1] );
                 pthread_exit( NULL );
             }
             snprintf( ias->ref[0]->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, cframe, ias->param->ext );
@@ -274,7 +278,7 @@ void* ia_seq_manage_input( void* vptr )
             cframe++;
             iaf->ready = true;
             iaf->users = 0;
-            printf("imageno %lld is ready with 0 users\n", cframe );
+//            printf("imageno %lld is ready with 0 users\n", cframe );
         }
 
         rc = pthread_mutex_unlock( &iaf->mutex );
@@ -299,6 +303,9 @@ void* ia_seq_manage_output( void* vptr )
 
     /* while there is more output */
     for( ;; ) {
+        if( ias->iaio->eoi ) {
+            pthread_exit( NULL );
+        }
         for( i = 0; i < i_maxrefs; i++ ) {
             /* if the output buffer isnt ready to be written -> continue */
             if( !ias->out[i]->ready || ias->out[i]->users != 0 ) {
@@ -425,7 +432,8 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->i_frame = 0;
 
     pthread_attr_init( &s->attr );
-    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
+//    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
+    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_DETACHED );
 
     rc = pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s );
     if( rc )
