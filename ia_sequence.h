@@ -42,13 +42,13 @@ inline bool         ia_seq_has_more_input( ia_seq_t* ias, uint64_t pos );
 ia_image_t**        ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size );
 
 /* close input buffers */
-inline void         ia_seq_close_input_bufs( ia_image_t** iab, uint8_t size );
+inline void         ia_seq_close_input_bufs( ia_image_t** iab, int8_t size );
 
 /* get size output buffers */
 ia_image_t**        ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num );
 
 /* close either list of output buffers */
-inline void         ia_seq_close_output_bufs( ia_image_t** iab, uint8_t size );
+inline void         ia_seq_close_output_bufs( ia_image_t** iab, int8_t size );
 
 //XXX these dont need to be exposed
 //void*               ia_seq_manage_input( ia_seq_t* ias );

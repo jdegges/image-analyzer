@@ -1075,7 +1075,7 @@ void* analyze_exec( void* vptr )
     pthread_exit( NULL );
 }
 
-#define MAX_THREADS 2
+#define MAX_THREADS 4
 
 int analyze( ia_param_t* p )
 {
