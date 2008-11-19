@@ -1,6 +1,6 @@
 #CC=/home/jdegges/gumstix/gumstix-oe/tmp/cross/arm-angstrom-linux-gnueabi/bin/gcc
 CC=gcc
-CFLAGS=--fast-math -g -W -Wall -O5
+CFLAGS=--fast-math -g -W -Wall -O5 -pg
 LIBS=-lm -lfreeimage -lpthread
 
 

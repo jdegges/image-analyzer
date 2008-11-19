@@ -9,6 +9,7 @@
 #include <stdbool.h>
 //#include <FreeImage.h>
 #include <math.h>
+#include <pthread.h>
 
 #define ia_pixel_t double
 
@@ -178,4 +179,31 @@ static inline ia_pixel_t ia_abs( ia_pixel_t v )
     return fabs( v );
 }
 
+static inline int ia_pthread_create (pthread_t *__restrict thread,
+               __const pthread_attr_t *__restrict attr,
+                              void *(*start_routine) (void *),
+                                             void *__restrict arg)
+{
+    return pthread_create( thread, attr, start_routine, arg );
+}
+
+static inline int ia_pthread_join( pthread_t thread, void **value_ptr )
+{
+    return pthread_join( thread, value_ptr );
+}
+
+static inline int ia_pthread_mutex_lock( pthread_mutex_t *mutex )
+{
+    return pthread_mutex_lock( mutex );
+}
+
+static inline int ia_pthread_mutex_trylock( pthread_mutex_t *mutex )
+{
+    return pthread_mutex_trylock( mutex );
+}
+
+static inline int ia_pthread_mutex_unlock( pthread_mutex_t *mutex )
+{
+    return pthread_mutex_unlock( mutex );
+}
 #endif

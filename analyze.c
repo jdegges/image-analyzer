@@ -764,12 +764,12 @@ int bhatta( ia_seq_t* s )
     }
     return 0;
 }
-
-static inline void copy( ia_seq_t* s )
+*/
+static inline void copy( ia_seq_t* s, ia_image_t* iaf, ia_image_t* iar )
 {
-    ia_memcpy_pixel( s->iar->pix,s->iaf->pix,s->param->i_size*3 );
+    ia_memcpy_pixel( iar->pix,iaf->pix,s->param->i_size*3 );
 }
-
+/*
 static inline void flow( ia_seq_t* s )
 {
     int i, j, h, k;
@@ -1053,26 +1053,30 @@ void* analyze_exec( void* vptr )
 {
     int j;
     ia_exec_t* iax = (ia_exec_t*) vptr;
-//    printf("getting bufs for %lld\n",iax->current_frame);
     ia_image_t** iaf = ia_seq_get_input_bufs( iax->ias, iax->current_frame, 1 );
-    if( iaf == NULL )
+    if( iaf == NULL ) {
+        ia_free( iax );
         pthread_exit( NULL );
-//    printf("got input bufs for %lld\n",iax->current_frame);
-    ia_image_t** iar = ia_seq_get_output_bufs( iax->ias, 1, iax->current_frame );
-//    printf("got output bufs %lld\n",iax->current_frame);
-    if( iaf == NULL || iar == NULL )
-        pthread_exit( NULL );
-    for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
-    {
-        switch ( iax->ias->param->filter[j] )
-        {
-            case DERIV:
-                fstderiv( iax->ias, iaf[0], iar[0] );
-                break;
-            default:
-                break;
-        }
     }
+    ia_image_t** iar = ia_seq_get_output_bufs( iax->ias, 1, iax->current_frame );
+    if( iaf == NULL || iar == NULL ) {
+        ia_free( iaf );
+        ia_free( iax );
+        pthread_exit( NULL );
+    }
+//    for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
+//    {
+//        switch ( iax->ias->param->filter[j] )
+//        {
+//            case DERIV:
+                fstderiv( iax->ias, iaf[0], iar[0] );
+//                break;
+//            case COPY:
+//                copy( iax->ias, iaf[0], iar[0] );
+//            default:
+//                break;
+//        }
+//    }
 
 //    printf("closing bufs for %lld\n",iax->current_frame);
     ia_seq_close_input_bufs( iaf, 1 );
@@ -1080,11 +1084,11 @@ void* analyze_exec( void* vptr )
     ia_seq_close_output_bufs( iar, 1 );
 //    printf("closed output bufs for %lld\n",iax->current_frame);
 
-    free( iax );
+    ia_free( iax );
     pthread_exit( NULL );
 }
 
-#define MAX_THREADS 8
+#define MAX_THREADS 16
 
 int analyze( ia_param_t* p )
 {
@@ -1121,18 +1125,24 @@ printf("EPERM  = %d\n", EPERM);
 //printf("doing frame %lld\n",current_frame );
         if( current_frame > MAX_THREADS) {
             if( tc >= MAX_THREADS ) tc = 0;
-            pthread_join( my_threads[tc], &status );
+            ia_pthread_join( my_threads[tc], &status );
 
 //            printf("closing thread %d\n", tc );
         }
 
-        rc = pthread_create( &my_threads[tc++], &attr, &analyze_exec, (void*) iax );
+        rc = ia_pthread_create( &my_threads[tc++], &attr, &analyze_exec, (void*) iax );
 //        printf("spawning thread %d\n",tc-1);
         if( rc ) {
-            fprintf( stderr, "ERROR: return code form pthread_create() is aa %d\n", rc );
+            fprintf( stderr, "ERROR: return code form ia_pthread_create() is aa %d\n", rc );
             fprintf( stderr, "%s\n",strerror(rc));
             return 1;
         }
+    }
+    if( current_frame > MAX_THREADS ) {
+        while( tc >= 0 ) {
+            ia_pthread_join( my_threads[tc--], &status );
+        }
+    }
 
 /*
         iaf = ia_seq_get_input_bufs( ias, current_frame++, 1 );
@@ -1201,8 +1211,8 @@ printf("EPERM  = %d\n", EPERM);
 
 //        if( p->output_directory[0] != 0 )
 //            ia_seq_saveimage( ias );
-*/
     }
+    */
 
     analyze_deinit( ias );
 

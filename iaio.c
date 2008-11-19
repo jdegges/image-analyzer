@@ -596,6 +596,9 @@ iaio_t* iaio_open( ia_seq_t* ias )
 {
     iaio_t* iaio = malloc( sizeof(iaio_t) );
 
+    iaio->fin.filp = NULL;
+    iaio->fin.buf = NULL;
+
     /* if cam input */
     if( ias->param->b_vdev )
     {
