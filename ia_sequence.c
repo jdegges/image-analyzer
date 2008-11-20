@@ -10,6 +10,7 @@
 #include "common.h"
 #include "iaio.h"
 #include "ia_sequence.h"
+#include "analyze.h"
 
 ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size )
 {
@@ -226,7 +227,15 @@ void* ia_seq_manage_input( void* vptr )
     ia_image_t* iaf;
     uint64_t i_maxrefs = ias->param->i_maxrefs - 1;
     uint64_t cframe = 0;
-    int rc;
+    int rc, tc = 0;
+    ia_exec_t* iax;
+    pthread_t my_threads[MAX_THREADS];
+    void* status;
+    pthread_attr_t attr;
+    pthread_attr_init( &attr );
+    pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE );
+
+    ia_pthread_mutex_lock( &ias->eoi_mutex );
 
     /* while there is more input */
     for( ;; ) {
@@ -256,12 +265,34 @@ void* ia_seq_manage_input( void* vptr )
             if( iaio_getimage(ias->iaio, iaf) )
             {
                 fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
+                if( cframe > MAX_THREADS ) {
+                    while( tc >= 0 ) {
+                        ia_pthread_join( my_threads[tc--], &status );
+                    }
+                }
                 ias->iaio->eoi = true;
                 ias->iaio->last_frame = cframe;
                 ia_pthread_mutex_unlock( &iaf->mutex );
 //                ia_seq_wait_for_output( ias );
 //                pthread_cancel( ias->tio[1] );
+                ia_pthread_mutex_unlock( &ias->eoi_mutex );
                 pthread_exit( NULL );
+            } else {
+                iax = malloc( sizeof(ia_exec_t) );
+                if( iax == NULL ) pthread_exit( NULL );
+                iax->ias = ias;
+                iax->current_frame = cframe;
+                iax->size = 1;
+                if( cframe > MAX_THREADS ) {
+                    if( tc >= MAX_THREADS ) tc = 0;
+                    ia_pthread_join( my_threads[tc], &status );
+                }
+                rc = ia_pthread_create( &my_threads[tc++], &attr, &analyze_exec, (void*) iax );
+                if( rc ) {
+                    fprintf( stderr, "ERROR: return code form ia_pthread_create() is aa %d\n", rc );
+                    fprintf( stderr, "%s\n", strerror(rc) );
+                    pthread_exit( NULL );
+                }
             }
             snprintf( ias->ref[0]->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, cframe, ias->param->ext );
             ias->ref[0]->i_frame = ias->i_frame = cframe;
@@ -389,6 +420,8 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         fprintf( stderr, "ERROR: ia_seq_open(): couldnt open iaio_t object\n" );
         return NULL;
     }
+
+    pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
     s->ref = (ia_image_t**) ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );

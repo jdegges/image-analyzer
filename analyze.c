@@ -1042,13 +1042,6 @@ static inline void analyze_deinit( ia_seq_t* s )
     ia_seq_close( s );
 }
 
-typedef struct
-{
-    ia_seq_t* ias;
-    uint64_t current_frame;
-    uint64_t size;
-} ia_exec_t;
-
 void* analyze_exec( void* vptr )
 {
     int j;
@@ -1088,8 +1081,6 @@ void* analyze_exec( void* vptr )
     pthread_exit( NULL );
 }
 
-#define MAX_THREADS 16
-
 int analyze( ia_param_t* p )
 {
     int wt_status, tc = 0, rc;
@@ -1107,6 +1098,13 @@ int analyze( ia_param_t* p )
         fprintf( stderr, "ERROR: analyze(): couln't init analyze\n" );
         return 1;
     }
+
+    ia_pthread_mutex_lock( &ias->eoi_mutex );
+    ia_pthread_mutex_unlock( &ias->eoi_mutex );
+
+    analyze_deinit( ias );
+
+    return 0;
 
 printf("EAGAIN = %d\n",EAGAIN);
 printf("EINVAL = %d\n",EINVAL);
