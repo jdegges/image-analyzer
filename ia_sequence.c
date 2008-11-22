@@ -224,58 +224,48 @@ void* ia_seq_manage_input( void* vptr )
 {
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iaf;
-    uint64_t i_maxrefs = ias->param->i_maxrefs - 1;
-    uint64_t cframe = 0;
+    uint64_t i_maxrefs = ias->param->i_maxrefs;
+    uint64_t i_frame = 0;
     int rc;
+    int bufno;
 
     /* while there is more input */
     for( ;; ) {
-        iaf = ias->ref[i_maxrefs];
+        iaf = ias->ref[i_frame % i_maxrefs];
 
-        /* get lock on oldest ref */
-        rc = pthread_mutex_lock( &iaf->mutex );
-        if( rc != 0 ) {
-            fprintf( stderr, "ERROR: ia_seq_manage_input(): pthread_mutex_lock returned code %d\n", rc );
+        /* get lock on next ref */
+        //ia_error( "manage_input: -l%d input\n", bufno
+        rc = ia_pthread_mutex_lock( &iaf->mutex );
+        ia_pthread_error( rc, "ia_seq_manage_input()", "ia_pthread_mutex_lock()" );
+
+        if( iaf->ready || iaf->users )
+        {
+            rc = ia_pthread_cond_wait( &iaf->cond_rw, &iaf->mutex );
+            ia_pthread_error( rc, "ia_seq_manage_input()", "ia_pthread_cond_wait()" );
+        }
+        assert( !iaf->ready && !iaf->users );
+        iaf->users++;
+
+        /* capture new frame, if error/eof -> exit */
+        if( i_frame > 200 || iaio_getimage(ias->iaio, iaf) )
+        {
+            fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
+            ias->iaio->eoi = true;
+            ias->iaio->last_frame = i_frame;
+            ia_pthread_mutex_unlock( &iaf->mutex );
             pthread_exit( NULL );
         }
+        snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
+        iaf->i_frame = ias->i_frame = i_frame++;
 
-        /* if no one is using the ref, shift ref-list
-         * down and replace with new frame */
-        if( iaf->users == 0 && !iaf->ready ) {
-            int i;
-            i = i_maxrefs;
+        iaf->ready = true;
+        iaf->users = 0;
 
-
-            /* shift refs down */
-            while( i-- ) {
-                ias->ref[i+1] = ias->ref[i];
-             }
-            ias->ref[0] = iaf;
-
-            /* capture new frame, if error/eof -> exit */
-            if( iaio_getimage(ias->iaio, iaf) )
-            {
-                fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
-                ias->iaio->eoi = true;
-                ias->iaio->last_frame = cframe;
-                ia_pthread_mutex_unlock( &iaf->mutex );
-//                ia_seq_wait_for_output( ias );
-//                pthread_cancel( ias->tio[1] );
-                pthread_exit( NULL );
-            }
-            snprintf( ias->ref[0]->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, cframe, ias->param->ext );
-            ias->ref[0]->i_frame = ias->i_frame = cframe;
-            cframe++;
-            iaf->ready = true;
-            iaf->users = 0;
-//            printf("imageno %lld is ready with 0 users\n", cframe );
-        }
+        rc = ia_pthread_cond_signal( &iaf->cond_ro );
+        ia_pthread_error( rc, "ia_seq_manage_input()", "ia_pthread_cond_signal()" );
 
         rc = ia_pthread_mutex_unlock( &iaf->mutex );
-        if( rc != 0 ) {
-            fprintf( stderr, "ERROR: ia_seq_manage_input(): ia_pthread_mutex_unlock returned code %d\n", rc );
-            pthread_exit( NULL );
-        }
+        ia_pthread_error( rc, "ia_seq_manage_input()", "ia_pthread_mutex_unlock()" );
     }
 }
 
@@ -289,50 +279,53 @@ void* ia_seq_manage_output( void* vptr )
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iar;
     uint64_t i, i_maxrefs = ias->param->i_maxrefs;
+    uint64_t i_frame = 0;
     int rc;
+    int time_to_exit = 0;
 
     /* while there is more output */
     for( ;; ) {
-        if( ias->iaio->eoi ) {
+        if( ias->iaio->eoi && time_to_exit++ > i_maxrefs ) {
             pthread_exit( NULL );
         }
-        for( i = 0; i < i_maxrefs; i++ ) {
-            iar = ias->out[i];
 
-            if( !iar->ready || iar->users != 0 ) {
-                usleep( 1 );
-                continue;
-            }
+        int bufno = i_frame % i_maxrefs;
+        iar = ias->out[bufno];
 
-            rc = ia_pthread_mutex_trylock( &iar->mutex );
-            if( rc == EBUSY ) {
-                usleep( 1 );
-                continue;
-            }
+        ia_error( "manage_output: about to lock mutex of buf %d\n", bufno );
+        rc = ia_pthread_mutex_lock( &iar->mutex );
+        ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_lock()" );
+        ia_error( "manage_output: got lock on buf %d\n", bufno );
 
-            if( rc != 0 ) {
-                fprintf( stderr, "ERROR: ia_seq_manage_output(): ia_ia_pthread_mutex_trylock returned code %d\n", rc );
-                return NULL;
-            }
-
-            /* verify that its ready to be written -> write it out */
-            if( iar->ready && iar->users == 0 ) {
-                /* if error/nospc -> exit */
-                if( iaio_saveimage(ias->iaio, iar) ) {
-                    ia_pthread_mutex_unlock( &iar->mutex );
-                    pthread_exit( NULL );
-                }
-                iar->ready = false;
-            } else {
-            }
-
-            /* free up the lock */
-            rc = ia_pthread_mutex_unlock( &iar->mutex );
-            if( rc != 0 ) {
-                fprintf( stderr, "ERROR: ia_seq_manage_output(): ia_pthread_mutex_unlock returned code %d\n", rc );
-                pthread_exit( NULL );
-            }
+        if( !iar->ready )
+        {
+            ia_error( "manage_output: doing cond_ro wait on buf %d\n", bufno );
+            rc = ia_pthread_cond_wait( &iar->cond_ro, &iar->mutex );
+            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_cond_wait()" );
+            ia_error( "manage_output: cond_ro wait returned for buf %d\n", bufno );
         }
+        assert( iar->ready );
+        iar->users++;
+
+        snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
+        if( iaio_saveimage(ias->iaio, iar) )
+        {
+            rc = ia_pthread_mutex_unlock( &iar->mutex );
+            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_unlock()" );
+            pthread_exit( NULL );
+        }
+        i_frame++;
+
+        iar->users--;
+        if( !iar->users )
+        {
+            iar->ready = false;
+            rc = ia_pthread_cond_signal( &iar->cond_rw );
+            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_cond_signal()" );
+        }
+
+        rc = ia_pthread_mutex_unlock( &iar->mutex );
+        ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_unlock()" );
     }
 }
 
@@ -404,6 +397,8 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         if( s->ref[i]->pix == NULL )
             return NULL;
         pthread_mutex_init( &s->ref[i]->mutex, NULL );
+        ia_pthread_cond_init( &s->ref[i]->cond_ro, NULL );
+        ia_pthread_cond_init( &s->ref[i]->cond_rw, NULL );
     }
 
     /* allocate output buffers */
@@ -420,37 +415,43 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         if( s->out[i]->pix == NULL )
             return NULL;
         pthread_mutex_init( &s->out[i]->mutex, NULL );
+        ia_pthread_cond_init( &s->ref[i]->cond_ro, NULL );
+        ia_pthread_cond_init( &s->ref[i]->cond_rw, NULL );
     }
 
     s->i_frame = 0;
 
     pthread_attr_init( &s->attr );
 //    pthread_attr_setdetachstate( &s->attr, ia_pthread_create_JOINABLE );
-    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_DETACHED );
+    pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
 
     rc = ia_pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s );
-    if( rc )
-    {
-        fprintf( stderr, "ERROR: ia_seq_open(): return code from ia_pthread_create() is %d\n", rc );
-        return NULL;
-    }
+    ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
 
     rc = ia_pthread_create( &s->tio[1], &s->attr, &ia_seq_manage_output, (void*) s );
-    if( rc )
-    {
-        fprintf( stderr, "ERROR: ia_seq_open(): return code from ia_pthread_create() is %d\n", rc );
-        return NULL;
-    }
+    ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
 
     return s;
 }
 
 inline void ia_seq_close( ia_seq_t* s )
 {
+    void* status;
+    int rc;
+    rc = ia_pthread_join( s->tio[0], &status );
+    if( rc ) {
+        fprintf( stderr, "ERROR in ia_sq_close1: %d\n", rc );
+    }
+
+    rc = ia_pthread_join( s->tio[1], &status );
+    if( rc ) {
+        fprintf( stderr, "ERROR in ia_seq_close2: %d\n", rc );
+    }
+
     pthread_attr_destroy( &s->attr );
 
-//    pthread_cancel( s->tio[0] );
-//    pthread_cancel( s->tio[1] );
+    pthread_cancel( s->tio[0] );
+    pthread_cancel( s->tio[1] );
 
     printf("closing iaio\n");
     fflush(stdout);
@@ -462,8 +463,21 @@ inline void ia_seq_close( ia_seq_t* s )
 
     while( s->param->i_maxrefs-- )
     {
+//        printf("freeing bufs %d\n",s->param->i_maxrefs ); fflush(stdout);
         pthread_mutex_destroy( &s->ref[s->param->i_maxrefs]->mutex );
+//        printf("free'd ref's mutex\n" ); fflush(stdout);
+        pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_ro );
+//        printf("free'd ref's condro\n" ); fflush(stdout);
+        pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_rw );
+//        printf("free'd ref's condrw\n" ); fflush(stdout);
+
         pthread_mutex_destroy( &s->out[s->param->i_maxrefs]->mutex );
+//        printf("free'd out's mutex\n" ); fflush(stdout);
+        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_rw );
+//        printf("free'd out's condrw\n" ); fflush(stdout);
+        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_ro );
+//        printf("free'd out's condro\n" ); fflush(stdout);
+
 
         ia_free( s->ref[s->param->i_maxrefs]->pix );
         ia_free( s->ref[s->param->i_maxrefs] );
@@ -472,8 +486,14 @@ inline void ia_seq_close( ia_seq_t* s )
         ia_free( s->out[s->param->i_maxrefs] );
     }
 
+//    printf("free'd buffers\n"); fflush(stdout);
+
     ia_free( s->ref );
+//    printf("free'd refs\n"); fflush(stdout);
+    
     ia_free( s->out );
+//    printf("free'd out\n"); fflush(stdout);
 
     ia_free( s );
+    printf("closed ia_seq_t\n"); fflush(stdout);
 }

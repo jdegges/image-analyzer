@@ -40,7 +40,7 @@ int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
         fflush(stdout);
         return 0;
     }
-    printf("FAILED wrote to disk\n");
+    printf("FAILED write to %s\n",iar->name);
     fflush(stdout);
     
     return 1;

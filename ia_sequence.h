@@ -61,4 +61,24 @@ inline void         ia_seq_close_output_bufs( ia_image_t** iab, int8_t size );
 // save ia_seq_t->iar 
 //void*               ia_seq_saveimage ( void* ptr );
 
+/* returns 1 if used, 0 if unused */
+static inline int bitmap_test(const uint32_t map, int i)
+{
+    return map & (1 << (i % 32));
+}
+
+/* sets the 'i'th bit of the map to 0 */
+static inline void bitmap_clear(uint32_t map, int i)
+{
+    map &= ~(1 << (i % 32));
+}
+
+/* sets the 'i'th bit of the map to 1 */
+static inline void bitmap_set(uint32_t map, int i)
+{
+    map |= (1 << (i % 32));
+}
+
+
+
 #endif

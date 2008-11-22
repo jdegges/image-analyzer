@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "common.h"
 #include "iaio.h"
@@ -1045,31 +1046,112 @@ static inline void analyze_deinit( ia_seq_t* s )
 typedef struct
 {
     ia_seq_t* ias;
-    uint64_t current_frame;
-    uint64_t size;
+    int bufno;
 } ia_exec_t;
 
 void* analyze_exec( void* vptr )
 {
-    int j;
+    int j, rc;
     ia_exec_t* iax = (ia_exec_t*) vptr;
-    ia_image_t** iaf = ia_seq_get_input_bufs( iax->ias, iax->current_frame, 1 );
-    if( iaf == NULL ) {
-        ia_free( iax );
-        pthread_exit( NULL );
+    ia_image_t *iaf, *iar;
+    while( 1 )
+    {
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
+        /* wait for input buf (wait for input manager signal) */
+        iaf = iax->ias->ref[iax->bufno];
+        ia_error( "analyze_exec: -l%d input\n", iax->bufno );
+        rc = ia_pthread_mutex_lock( &iaf->mutex );
+        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_lock()" );
+        ia_error( "analyze_exec: +l%d input\n", iax->bufno );
+        if( !iaf->ready )
+        {
+            ia_error( "analyze_exec: -row%d input\n", iax->bufno );
+            rc = ia_pthread_cond_wait( &iaf->cond_ro, &iaf->mutex );
+            ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_cond_wait()" );
+            ia_error( "analyze_exec: +row%d input\n", iax->bufno );
+        }
+        assert( iaf->ready );
+        iaf->users++;
+
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
+
+
+        /* wait for output buf (wait for output manager signal) */
+        iar = iax->ias->out[iax->bufno];
+        ia_error( "analyze_exec: -l%d output\n", iax->bufno );
+        rc = ia_pthread_mutex_lock( &iar->mutex );
+        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_lock()" );
+        ia_error( "analyze_exec: +l%d output\n", iax->bufno );
+        if( iar->ready || iar->users )
+        {
+            ia_error( "analyze_exec: -row%d output\n", iax->bufno );
+            rc = ia_pthread_cond_wait( &iar->cond_rw, &iar->mutex );
+            ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_wait()" );
+            ia_error( "analyze_exec: +row%d output\n", iax->bufno );
+        }
+        assert( !iar->ready && !iar->users );
+        iar->users++;
+
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
+
+        /* do processing */
+        //fstderiv( iax->ias, iaf, iar );
+        copy( iax->ias, iaf, iar );
+
+
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
+
+        /* close input buf (signal manage input) */
+        iaf->users--;
+        if( !iaf->users )
+        {
+            iaf->ready = false;
+            ia_error( "analyze_exec: -s%d input\n", iax->bufno );
+            rc = ia_pthread_cond_signal( &iaf->cond_rw );
+            ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_signal()" );
+            ia_error( "analyze_exec: +s%d input\n", iax->bufno );
+        }
+        ia_error( "analyze_exec: -u%d input\n", iax->bufno );
+        rc = ia_pthread_mutex_unlock( &iaf->mutex );
+        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
+        ia_error( "+analyze_exec: +u%d input\n", iax->bufno );
+
+
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
+
+        /* close output buf (signal manage output) */
+        iar->ready = true;
+        iar->users = 0;
+        ia_error( "analyze_exec: -s%d output\n", iax->bufno );
+        rc = ia_pthread_cond_signal( &iar->cond_ro );
+        ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_signal()" );
+        ia_error( "analyze_exec: +s%d output\n", iax->bufno );
+        ia_error( "analyze_exec: -u%d output\n", iax->bufno );
+        rc = ia_pthread_mutex_unlock( &iar->mutex );
+        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
+        ia_error( "analyze_exec: +u%d output\n", iax->bufno );
+
+        if( iax->ias->iaio->eoi )
+            pthread_exit(NULL);
+
     }
-    ia_image_t** iar = ia_seq_get_output_bufs( iax->ias, 1, iax->current_frame );
-    if( iaf == NULL || iar == NULL ) {
-        ia_free( iaf );
-        ia_free( iax );
-        pthread_exit( NULL );
-    }
+
 //    for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
 //    {
 //        switch ( iax->ias->param->filter[j] )
 //        {
 //            case DERIV:
-                fstderiv( iax->ias, iaf[0], iar[0] );
+//                fstderiv( iax->ias, iaf[0], iar[0] );
 //                break;
 //            case COPY:
 //                copy( iax->ias, iaf[0], iar[0] );
@@ -1079,23 +1161,21 @@ void* analyze_exec( void* vptr )
 //    }
 
 //    printf("closing bufs for %lld\n",iax->current_frame);
-    ia_seq_close_input_bufs( iaf, 1 );
+//    ia_seq_close_input_bufs( iaf, 1 );
 //    printf("closed input bufs for %lld\n",iax->current_frame);
-    ia_seq_close_output_bufs( iar, 1 );
+//    ia_seq_close_output_bufs( iar, 1 );
 //    printf("closed output bufs for %lld\n",iax->current_frame);
 
     ia_free( iax );
     pthread_exit( NULL );
 }
 
-#define MAX_THREADS 16
+#define MAX_THREADS 50
 
 int analyze( ia_param_t* p )
 {
-    int wt_status, tc = 0, rc;
+    int rc, i, i_maxrefs;
     void* status;
-    uint64_t current_frame = 0;
-    uint8_t last;
     pthread_t my_threads[MAX_THREADS];
     pthread_attr_t attr;
     pthread_attr_init( &attr );
@@ -1108,42 +1188,46 @@ int analyze( ia_param_t* p )
         return 1;
     }
 
-printf("EAGAIN = %d\n",EAGAIN);
-printf("EINVAL = %d\n",EINVAL);
-printf("EPERM  = %d\n", EPERM);
-    wt_status = 0;
-    last = 0;
-    while( ia_seq_has_more_input(ias, current_frame) )
+    printf("spawning processing threads...");
+    i_maxrefs = ias->param->i_maxrefs;
+    for( i = 0; i < i_maxrefs; i++ )
     {
         ia_exec_t* iax = malloc( sizeof(ia_exec_t) );
-        if( iax == NULL ) {
+        if( iax == NULL )
             return 1;
-        }
         iax->ias = ias;
-        iax->current_frame = current_frame++;
-        iax->size = 1;
-//printf("doing frame %lld\n",current_frame );
-        if( current_frame > MAX_THREADS) {
-            if( tc >= MAX_THREADS ) tc = 0;
-            ia_pthread_join( my_threads[tc], &status );
+        iax->bufno = i;
 
-//            printf("closing thread %d\n", tc );
-        }
-
-        rc = ia_pthread_create( &my_threads[tc++], &attr, &analyze_exec, (void*) iax );
-//        printf("spawning thread %d\n",tc-1);
+        ia_error( "analyze: creating process thread with bufno %d\n", i );
+        rc = ia_pthread_create( &my_threads[i], &attr, &analyze_exec, (void*) iax );
         if( rc ) {
-            fprintf( stderr, "ERROR: return code form ia_pthread_create() is aa %d\n", rc );
-            fprintf( stderr, "%s\n",strerror(rc));
+            fprintf( stderr, "analyze(): ia_pthread_create() returned code %d\n", rc );
             return 1;
         }
     }
-    if( current_frame > MAX_THREADS ) {
-        while( tc >= 0 ) {
-            ia_pthread_join( my_threads[tc--], &status );
+
+    printf(" done\nwaiting on processing threads to finish...\n");
+
+    while( !ias->iaio->eoi )
+    {
+        sleep( 1 );
+    }
+    
+    for( i = 0; i < i_maxrefs; i++ )
+    {
+        rc = pthread_cancel( my_threads[i] );
+//        rc = ia_pthread_join( my_threads[i], &status );
+        if( rc ) {
+            fprintf( stderr, "analyze(): ia_pthread_join() returned code %d\n", rc );
+            return 1;
         }
+        printf("thread %d finished\n", i );
     }
 
+    pthread_cancel( ias->tio[0] );
+    pthread_cancel( ias->tio[1] );
+
+    printf(" done\n");
 /*
         iaf = ia_seq_get_input_bufs( ias, current_frame++, 1 );
         iar = ia_seq_get_output_bufs( ias, 1, current_frame );

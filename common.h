@@ -12,6 +12,7 @@
 #include <pthread.h>
 
 #define ia_pixel_t double
+const static int debug = 0;
 
 /* ia_image_t: image data structure
  * i_frame: position of this frame in image stream
@@ -30,6 +31,8 @@ typedef struct
     uint8_t     users;
     bool        ready;
     pthread_mutex_t mutex;
+    pthread_cond_t cond_ro;
+    pthread_cond_t cond_rw;
 } ia_image_t;
 
 static inline int ia_select( int n, fd_set* r, fd_set* w, fd_set* e, struct timeval* t )
@@ -180,9 +183,9 @@ static inline ia_pixel_t ia_abs( ia_pixel_t v )
 }
 
 static inline int ia_pthread_create (pthread_t *__restrict thread,
-               __const pthread_attr_t *__restrict attr,
-                              void *(*start_routine) (void *),
-                                             void *__restrict arg)
+                                     __const pthread_attr_t *__restrict attr,
+                                     void *(*start_routine) (void *),
+                                     void *__restrict arg)
 {
     return pthread_create( thread, attr, start_routine, arg );
 }
@@ -191,6 +194,20 @@ static inline int ia_pthread_join( pthread_t thread, void **value_ptr )
 {
     return pthread_join( thread, value_ptr );
 }
+
+/*
+static inline int ia_pthread_mutex_init( pthread_mutex_t *__restrict mutex,
+                                         const ptherad_mutexattr_t *__restrict attr)
+{
+    return pthread_mutex_init( mutex, attr );
+}
+*/
+
+static inline int ia_pthread_mutex_destroy( pthread_mutex_t *mutex )
+{
+    return pthread_mutex_destroy( mutex );
+}
+
 
 static inline int ia_pthread_mutex_lock( pthread_mutex_t *mutex )
 {
@@ -206,4 +223,37 @@ static inline int ia_pthread_mutex_unlock( pthread_mutex_t *mutex )
 {
     return pthread_mutex_unlock( mutex );
 }
+
+static inline int ia_pthread_cond_signal( pthread_cond_t *cond )
+{
+    return pthread_cond_signal( cond );
+}
+
+static inline int ia_pthread_cond_wait( pthread_cond_t *__restrict cond,
+                                        pthread_mutex_t *__restrict mutex)
+{
+    return pthread_cond_wait( cond, mutex );
+}
+
+static inline int ia_pthread_cond_init( pthread_cond_t *__restrict cond,
+                                        const pthread_condattr_t *__restrict attr)
+{
+    return pthread_cond_init( cond, attr );
+}
+
+static inline int ia_pthread_cond_destroy( pthread_cond_t *cond)
+{
+    return pthread_cond_destroy( cond );
+}
+
+static inline void ia_pthread_error( int rc, char* a, char* b )
+{
+    if( rc ) {
+        fprintf( stderr, "%s: the call to %s returned error code %d\n", a, b, rc );
+        pthread_exit( NULL );
+    }
+}
+
+#define ia_error(format, ...) { if(debug) fprintf(stderr,format, ## __VA_ARGS__); }
+
 #endif
