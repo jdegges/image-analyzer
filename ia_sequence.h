@@ -10,10 +10,14 @@
 #include "image_analyzer.h"
 #include "iaio.h"
 
+#define MAX_THREADS 8
+
+
 typedef struct ia_seq_t
 {
-    ia_image_t**        ref;        // previous i_nref frames
+    ia_image_t**        ref;       // previous i_nref frames
     ia_image_t**        out;        // output buffers
+
     uint64_t            i_frame;    // position of iaf in sequence
     ia_param_t*         param;      // contains all parameters
 
@@ -22,12 +26,21 @@ typedef struct ia_seq_t
     pthread_attr_t      attr;
 
     struct iaio_t*      iaio;       // used to hold specifics of io
+    pthread_mutex_t     eoi_mutex;
 
     /* FIXME these should be moved to analyze.c. returned by init() as void*
      * and passed to bhatta() .. or just created in bhatta() each time */
     uint8_t*            mask;       // used in bhatta
     uint8_t*            diffImage;  // bhatta
 } ia_seq_t;
+
+
+typedef struct ia_exec_t
+{
+    ia_seq_t* ias;
+    uint64_t current_frame;
+    uint64_t size;
+} ia_exec_t;
 
 /* opens and initializes an ia_seq_t object with paramenters p */
 ia_seq_t*           ia_seq_open ( ia_param_t* p );

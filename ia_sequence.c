@@ -10,6 +10,7 @@
 #include "common.h"
 #include "iaio.h"
 #include "ia_sequence.h"
+#include "analyze.h"
 
 ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size )
 {
@@ -382,6 +383,8 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         fprintf( stderr, "ERROR: ia_seq_open(): couldnt open iaio_t object\n" );
         return NULL;
     }
+
+    pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
     s->ref = (ia_image_t**) ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
