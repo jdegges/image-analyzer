@@ -52,11 +52,6 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
                     iab[i++] = iaf;
                     frameno--;
                     j++;
-//                    printf("grabbed image %lld for processing. has %d users\n",iaf->i_frame,iaf->users);
-                }
-                else
-                {
-//                    printf("the inb i need isnt ready\n"); fflush(stdout);
                 }
 
                 /* unlock image */
@@ -336,29 +331,15 @@ void* ia_seq_manage_output( void* vptr )
  * clean up io threads if the end of input has been reached
  */
 bool ia_seq_has_more_input( ia_seq_t* ias, uint64_t pos ) {
-//printf("chcking for more input\n");
     if( ias->iaio->eoi ) {
         int rc;
         for( rc = 0; rc < ias->param->i_maxrefs; rc++ ) {
             if( pos > ias->ref[rc]->i_frame ) {
-
-
                 printf("no more input\n");
-
-                //printf("pthread ESRCH = %d\n",ESRCH);
-                //rc = pthread_cancel( ias->tio[0] );
-                //printf("pthread_cancel errcode: %d\n",rc );
-        
-                /* wait a little bit before killing the output manager */
-                //usleep( 50 );
-                //rc = pthread_cancel( ias->tio[1] );
-                //printf( "pthread_cancel errcode: %d\n", rc );
-                
                 return false;
             }
         }
     }
-
     return true;
 }
 
@@ -425,7 +406,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->i_frame = 0;
 
     pthread_attr_init( &s->attr );
-//    pthread_attr_setdetachstate( &s->attr, ia_pthread_create_JOINABLE );
     pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
 
     rc = ia_pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s );
@@ -456,30 +436,18 @@ inline void ia_seq_close( ia_seq_t* s )
     pthread_cancel( s->tio[0] );
     pthread_cancel( s->tio[1] );
 
-    printf("closing iaio\n");
-    fflush(stdout);
-
     iaio_close( s->iaio );
 
-    printf("freeing buffers\n");
-    fflush(stdout);
 
     while( s->param->i_maxrefs-- )
     {
-//        printf("freeing bufs %d\n",s->param->i_maxrefs ); fflush(stdout);
         pthread_mutex_destroy( &s->ref[s->param->i_maxrefs]->mutex );
-//        printf("free'd ref's mutex\n" ); fflush(stdout);
         pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_ro );
-//        printf("free'd ref's condro\n" ); fflush(stdout);
         pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_rw );
-//        printf("free'd ref's condrw\n" ); fflush(stdout);
 
         pthread_mutex_destroy( &s->out[s->param->i_maxrefs]->mutex );
-//        printf("free'd out's mutex\n" ); fflush(stdout);
         pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_rw );
-//        printf("free'd out's condrw\n" ); fflush(stdout);
         pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_ro );
-//        printf("free'd out's condro\n" ); fflush(stdout);
 
 
         ia_free( s->ref[s->param->i_maxrefs]->pix );
@@ -489,14 +457,7 @@ inline void ia_seq_close( ia_seq_t* s )
         ia_free( s->out[s->param->i_maxrefs] );
     }
 
-//    printf("free'd buffers\n"); fflush(stdout);
-
     ia_free( s->ref );
-//    printf("free'd refs\n"); fflush(stdout);
-    
     ia_free( s->out );
-//    printf("free'd out\n"); fflush(stdout);
-
     ia_free( s );
-    printf("closed ia_seq_t\n"); fflush(stdout);
 }

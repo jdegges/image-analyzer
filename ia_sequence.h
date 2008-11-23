@@ -10,7 +10,7 @@
 #include "image_analyzer.h"
 #include "iaio.h"
 
-#define MAX_THREADS 8
+#define MAX_THREADS 32
 
 
 typedef struct ia_seq_t
@@ -38,8 +38,7 @@ typedef struct ia_seq_t
 typedef struct ia_exec_t
 {
     ia_seq_t* ias;
-    uint64_t current_frame;
-    uint64_t size;
+    int bufno;
 } ia_exec_t;
 
 /* opens and initializes an ia_seq_t object with paramenters p */
@@ -62,36 +61,5 @@ ia_image_t**        ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_
 
 /* close either list of output buffers */
 inline void         ia_seq_close_output_bufs( ia_image_t** iab, int8_t size );
-
-//XXX these dont need to be exposed
-//void*               ia_seq_manage_input( ia_seq_t* ias );
-//void*               ia_seq_manage_output( ia_seq_t* ias );
-// return pointer to an image at specified relative position in stream 
-//int                 ia_seq_getimage ( ia_seq_t* s );
-
-//int                 ia_seq_probelist( ia_seq_t* s );
-
-// save ia_seq_t->iar 
-//void*               ia_seq_saveimage ( void* ptr );
-
-/* returns 1 if used, 0 if unused */
-static inline int bitmap_test(const uint32_t map, int i)
-{
-    return map & (1 << (i % 32));
-}
-
-/* sets the 'i'th bit of the map to 0 */
-static inline void bitmap_clear(uint32_t map, int i)
-{
-    map &= ~(1 << (i % 32));
-}
-
-/* sets the 'i'th bit of the map to 1 */
-static inline void bitmap_set(uint32_t map, int i)
-{
-    map |= (1 << (i % 32));
-}
-
-
 
 #endif

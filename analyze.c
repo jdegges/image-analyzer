@@ -244,8 +244,7 @@ static inline int offset( int w, int x, int y, int c )
 
 #define O( y,x ) (s->param->i_width*3*y + x*3)
 
-/*AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-void draw_best_box( ia_seq_t* s )
+void draw_best_box( ia_seq_t* s, ia_image_t* iaf, ia_image_t* iar )
 {
     int i, j;
     int top, bottom, left, right;
@@ -256,7 +255,7 @@ void draw_best_box( ia_seq_t* s )
     {
         for( j = 0; j < s->param->i_width; j++ )
         {
-            if( s->iaf->pix[O(i,j)] > 128 )
+            if( iaf->pix[O(i,j)] > 128 )
             {
                 top    = (   top > i) ? i : top;
                 left   = (  left > j) ? j : left;
@@ -264,9 +263,9 @@ void draw_best_box( ia_seq_t* s )
                 right  = ( right < j) ? j : right;
             }
 
-            s->iar->pix[O(i,j)+0] = 0;
-            s->iar->pix[O(i,j)+1] = 0;
-            s->iar->pix[O(i,j)+2] = 0;
+            iar->pix[O(i,j)+0] = 0;
+            iar->pix[O(i,j)+1] = 0;
+            iar->pix[O(i,j)+2] = 0;
         }
     }
     
@@ -274,13 +273,12 @@ void draw_best_box( ia_seq_t* s )
     {
         for( j = left; j <= right; j++ )
         {
-            s->iar->pix[O(i,j)+0] = 255;
-            s->iar->pix[O(i,j)+1] = 255;
-            s->iar->pix[O(i,j)+2] = 255;
+            iar->pix[O(i,j)+0] = 255;
+            iar->pix[O(i,j)+1] = 255;
+            iar->pix[O(i,j)+2] = 255;
         }
     }
 }
-*/
 
 void fstderiv( ia_seq_t* s, ia_image_t* iaf, ia_image_t* iar )
 {
@@ -819,8 +817,9 @@ static inline void flow( ia_seq_t* s )
         }
     }
 }
+*/
 
-static inline void curvature( ia_seq_t* s )
+static inline void curvature( ia_seq_t* s, ia_image_t* iaf, ia_image_t* iar )
 {
     int i, j;
     double kr, kg, kb, op;
@@ -833,47 +832,48 @@ static inline void curvature( ia_seq_t* s )
         {
             if( i == 0 || j == 0 || j == s->param->i_width-1 || i == s->param->i_height-1 )
             {
-                s->iar->pix[offset(s->param->i_width,j,i,0)] =
-                s->iar->pix[offset(s->param->i_width,j,i,1)] =
-                s->iar->pix[offset(s->param->i_width,j,i,2)] = 0;
+                iar->pix[offset(s->param->i_width,j,i,0)] =
+                iar->pix[offset(s->param->i_width,j,i,1)] =
+                iar->pix[offset(s->param->i_width,j,i,2)] = 0;
                 continue;
             }
 
-            kr = (fabs( s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)] - s->iaf->pix[offset(s->param->i_width,j-1,i  ,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i  ,0)] - s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i+1,0)] - s->iaf->pix[offset(s->param->i_width,j  ,i+1,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i+1,0)] - s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i+1,0)] - s->iaf->pix[offset(s->param->i_width,j+1,i  ,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i  ,0)] - s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i-1,0)] - s->iaf->pix[offset(s->param->i_width,j  ,i-1,0)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i-1,0)] - s->iaf->pix[offset(s->param->i_width,j-1,i-1,0)] )) * op;
+            kr = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,0)] - iaf->pix[offset(s->param->i_width,j-1,i  ,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,0)] - iaf->pix[offset(s->param->i_width,j-1,i+1,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,0)] - iaf->pix[offset(s->param->i_width,j  ,i+1,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,0)] - iaf->pix[offset(s->param->i_width,j+1,i+1,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,0)] - iaf->pix[offset(s->param->i_width,j+1,i  ,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,0)] - iaf->pix[offset(s->param->i_width,j+1,i-1,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,0)] - iaf->pix[offset(s->param->i_width,j  ,i-1,0)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,0)] - iaf->pix[offset(s->param->i_width,j-1,i-1,0)] )) * op;
 
-            kg = (fabs( s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)] - s->iaf->pix[offset(s->param->i_width,j-1,i  ,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i  ,1)] - s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i+1,1)] - s->iaf->pix[offset(s->param->i_width,j  ,i+1,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i+1,1)] - s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i+1,1)] - s->iaf->pix[offset(s->param->i_width,j+1,i  ,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i  ,1)] - s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i-1,1)] - s->iaf->pix[offset(s->param->i_width,j  ,i-1,1)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i-1,1)] - s->iaf->pix[offset(s->param->i_width,j-1,i-1,1)] )) * op;
+            kg = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,1)] - iaf->pix[offset(s->param->i_width,j-1,i  ,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,1)] - iaf->pix[offset(s->param->i_width,j-1,i+1,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,1)] - iaf->pix[offset(s->param->i_width,j  ,i+1,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,1)] - iaf->pix[offset(s->param->i_width,j+1,i+1,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,1)] - iaf->pix[offset(s->param->i_width,j+1,i  ,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,1)] - iaf->pix[offset(s->param->i_width,j+1,i-1,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,1)] - iaf->pix[offset(s->param->i_width,j  ,i-1,1)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,1)] - iaf->pix[offset(s->param->i_width,j-1,i-1,1)] )) * op;
 
 
-            kb = (fabs( s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)] - s->iaf->pix[offset(s->param->i_width,j-1,i  ,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i  ,2)] - s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j-1,i+1,2)] - s->iaf->pix[offset(s->param->i_width,j  ,i+1,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i+1,2)] - s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i+1,2)] - s->iaf->pix[offset(s->param->i_width,j+1,i  ,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i  ,2)] - s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j+1,i-1,2)] - s->iaf->pix[offset(s->param->i_width,j  ,i-1,2)] )
-                + fabs( s->iaf->pix[offset(s->param->i_width,j  ,i-1,2)] - s->iaf->pix[offset(s->param->i_width,j-1,i-1,2)] )) * op;
+            kb = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,2)] - iaf->pix[offset(s->param->i_width,j-1,i  ,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,2)] - iaf->pix[offset(s->param->i_width,j-1,i+1,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,2)] - iaf->pix[offset(s->param->i_width,j  ,i+1,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,2)] - iaf->pix[offset(s->param->i_width,j+1,i+1,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,2)] - iaf->pix[offset(s->param->i_width,j+1,i  ,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,2)] - iaf->pix[offset(s->param->i_width,j+1,i-1,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,2)] - iaf->pix[offset(s->param->i_width,j  ,i-1,2)] )
+                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,2)] - iaf->pix[offset(s->param->i_width,j-1,i-1,2)] )) * op;
 
-            s->iar->pix[offset(s->param->i_width,j,i,0)] = kr;
-            s->iar->pix[offset(s->param->i_width,j,i,1)] = kg;
-            s->iar->pix[offset(s->param->i_width,j,i,2)] = kb;
+            iar->pix[offset(s->param->i_width,j,i,0)] = kr;
+            iar->pix[offset(s->param->i_width,j,i,1)] = kg;
+            iar->pix[offset(s->param->i_width,j,i,2)] = kb;
         }
     }
 }
 
+/*
 static inline void ssd( ia_seq_t* s )
 {
     int i, j, h, k;
@@ -1043,12 +1043,6 @@ static inline void analyze_deinit( ia_seq_t* s )
     ia_seq_close( s );
 }
 
-typedef struct
-{
-    ia_seq_t* ias;
-    int bufno;
-} ia_exec_t;
-
 void* analyze_exec( void* vptr )
 {
     int j, rc;
@@ -1056,9 +1050,6 @@ void* analyze_exec( void* vptr )
     ia_image_t *iaf, *iar;
     while( 1 )
     {
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
         /* wait for input buf (wait for input manager signal) */
         iaf = iax->ias->ref[iax->bufno];
         ia_error( "analyze_exec: -l%d input\n", iax->bufno );
@@ -1074,11 +1065,6 @@ void* analyze_exec( void* vptr )
         }
         assert( iaf->ready );
         iaf->users++;
-
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
-
 
         /* wait for output buf (wait for output manager signal) */
         iar = iax->ias->out[iax->bufno];
@@ -1096,18 +1082,56 @@ void* analyze_exec( void* vptr )
         assert( !iar->ready && !iar->users );
         iar->users++;
 
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
-
         /* do processing */
-        //fstderiv( iax->ias, iaf, iar );
-        copy( iax->ias, iaf, iar );
-
-
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
+        for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
+        {
+            switch ( iax->ias->param->filter[j] )
+            {
+                case COPY:
+                    ia_error( "doing copy...\t" );
+                    copy( iax->ias, iaf, iar );
+                    break;
+                case DERIV:
+                    ia_error( "doing deriv...\t" );
+                    fstderiv( iax->ias, iaf, iar );
+                    break;
+                case BHATTA:
+                    ia_error( "doing bhatta...\n" );
+//                    if( bhatta(ias) )
+//                        return 1;
+                    break;
+                case MBOX:
+                    ia_error( "doing best bounding box...\n" );
+                    draw_best_box( iax->ias, iaf, iar );
+                    break;
+                case DIFF:
+                    ia_error( "doing diff...\n" );
+//                    diff( ias );
+                    break;
+                case FLOW:
+                    ia_error( "doing flow...\n" );
+//                    flow( ias );
+                    break;
+                case CURV:
+                    ia_error( "doing curvature...\n" );
+                    curvature( iax->ias, iaf, iar );
+                    break;
+                case SSD:
+                    ia_error( "doing ssd...\n" );
+//                    ssd( ias );
+                    break;
+                case SAD:
+                    ia_error( "doing sad...\n" );
+//                    sad( ias );
+                    break;
+                case MONKEY:
+                    ia_error( "doing monkey...\n" );
+//                    monkey( ias );
+                    break;
+                default:
+                    break;
+            }
+        }
 
         /* close input buf (signal manage input) */
         iaf->users--;
@@ -1124,11 +1148,6 @@ void* analyze_exec( void* vptr )
         ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
         ia_error( "+analyze_exec: +u%d input\n", iax->bufno );
 
-
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
-
         /* close output buf (signal manage output) */
         iar->ready = true;
         iar->users = 0;
@@ -1140,37 +1159,11 @@ void* analyze_exec( void* vptr )
         rc = ia_pthread_mutex_unlock( &iar->mutex );
         ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
         ia_error( "analyze_exec: +u%d output\n", iax->bufno );
-
-        if( iax->ias->iaio->eoi )
-            pthread_exit(NULL);
-
     }
-
-//    for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
-//    {
-//        switch ( iax->ias->param->filter[j] )
-//        {
-//            case DERIV:
-//                fstderiv( iax->ias, iaf[0], iar[0] );
-//                break;
-//            case COPY:
-//                copy( iax->ias, iaf[0], iar[0] );
-//            default:
-//                break;
-//        }
-//    }
-
-//    printf("closing bufs for %lld\n",iax->current_frame);
-//    ia_seq_close_input_bufs( iaf, 1 );
-//    printf("closed input bufs for %lld\n",iax->current_frame);
-//    ia_seq_close_output_bufs( iar, 1 );
-//    printf("closed output bufs for %lld\n",iax->current_frame);
 
     ia_free( iax );
     pthread_exit( NULL );
 }
-
-#define MAX_THREADS 50
 
 int analyze( ia_param_t* p )
 {
@@ -1209,14 +1202,11 @@ int analyze( ia_param_t* p )
     printf(" done\nwaiting on processing threads to finish...\n");
 
     while( !ias->iaio->eoi )
-    {
-        sleep( 1 );
-    }
+        usleep( 100 );
     
     for( i = 0; i < i_maxrefs; i++ )
     {
         rc = pthread_cancel( my_threads[i] );
-//        rc = ia_pthread_join( my_threads[i], &status );
         if( rc ) {
             fprintf( stderr, "analyze(): ia_pthread_join() returned code %d\n", rc );
             return 1;
@@ -1228,75 +1218,6 @@ int analyze( ia_param_t* p )
     pthread_cancel( ias->tio[1] );
 
     printf(" done\n");
-/*
-        iaf = ia_seq_get_input_bufs( ias, current_frame++, 1 );
-        iar = ia_seq_get_output_bufs( ias, 1, current_frame );
-        // process frame with selected filters
-        for ( j = 0; p->filter[j] != 0; j++ )
-        {
-            switch ( p->filter[j] )
-            {
-                case COPY:
-                    IA_PRINT( "doing copy...\t" );
-//                    copy( ias );
-                    break;
-                case DERIV:
-                    IA_PRINT( "doing deriv...\t" );
-                    fstderiv( ias, iaf[0], iar[0] );
-//                    printf("done with deriv\n");
-//                    fflush(stdout);
-                    break;
-                case BHATTA:
-                    IA_PRINT( "doing bhatta...\n" );
-//                    if( bhatta(ias) )
-//                        return 1;
-                    break;
-                case MBOX:
-                    IA_PRINT( "doing best bounding box...\n" );
-//                    draw_best_box( ias );
-                    break;
-                case DIFF:
-                    IA_PRINT( "doing diff...\n" );
-//                    diff( ias );
-                    break;
-                case FLOW:
-                    IA_PRINT( "doing flow...\n" );
-//                    flow( ias );
-                    break;
-                case CURV:
-                    IA_PRINT( "doing curvature...\n" );
-//                    curvature( ias );
-                    break;
-                case SSD:
-                    IA_PRINT( "doing ssd...\n" );
-//                    ssd( ias );
-                    break;
-                case SAD:
-                    IA_PRINT( "doing sad...\n" );
-//                    sad( ias );
-                    break;
-                case MONKEY:
-                    IA_PRINT( "doing monkey...\n" );
-//                    monkey( ias );
-                    break;
-                default:
-                    break;
-            }
-//            printf("end of filter list\n");
-        }
-
-        ia_seq_close_input_bufs( iaf, 1 );
-//        printf("successfully closed input bufs\n");
-        ia_seq_close_output_bufs( iar, 1 );
-//        printf("successfully closed output bufs\n");
-
-        if( p->b_verbose )
-            printf( "captured a frame: %lld\n",ias->i_frame );
-
-//        if( p->output_directory[0] != 0 )
-//            ia_seq_saveimage( ias );
-    }
-    */
 
     analyze_deinit( ias );
 

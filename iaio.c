@@ -40,8 +40,7 @@ int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
         fflush(stdout);
         return 0;
     }
-    printf("FAILED write to %s\n",iar->name);
-    fflush(stdout);
+    printf("FAILED write to %s\n",iar->name); fflush(stdout);
     
     return 1;
 }
@@ -560,10 +559,6 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
     param->i_width = iaio->i_width;
     param->i_height = iaio->i_height;
     param->i_size = iaio->i_size;
-
-/*    param->i_width = 1024;
-    param->i_height = 576;
-    param->i_size = 1024*576;*/
 
     iaio->fin.filp = fopen( param->input_file, "r" );
     if( iaio->fin.filp == NULL ) {

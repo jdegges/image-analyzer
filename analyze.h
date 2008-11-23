@@ -21,7 +21,6 @@
 ia_bhatta_t b;
 
 int     analyze( ia_param_t* p );
-void*   analyze_exec( void* vptr );
 
 /*
 // these functions do not yet jive with ia yet, so dont call them
