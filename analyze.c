@@ -1068,9 +1068,9 @@ void* analyze_exec( void* vptr )
         iaf->users++;
 
         /* wait for output buf (wait for output manager signal) */
-        printf("%d <<<\n", iax->ias->free->count );
+        //printf("%d <<<\n", iax->ias->free->count );
         iar = ia_queue_pop( iax->ias->free );
-        printf("got output buffer from free queue, %d\n", iax->ias->free->count);
+        //printf("got output buffer from free queue, %d\n", iax->ias->free->count);
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
         {
@@ -1138,7 +1138,7 @@ void* analyze_exec( void* vptr )
         ia_error( "+analyze_exec: +u%d input\n", iax->bufno );
 
         /* close output buf (signal manage output) */
-        printf("pushing onto queue\n");
+        //printf("pushing onto queue\n");
         ia_queue_push( iax->ias->output, iar );
     }
 

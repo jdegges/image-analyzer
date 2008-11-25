@@ -36,12 +36,12 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
     assert( q->w - q->r < q->size );
 
     // add image to queue
+    //fprintf( stderr, "adding image %p to slot %d\n", (void*)iaf, (q->w % q->size) );
     q->list[q->w++ % q->size] = iaf;
 
     // if someone is waiting to pop, send signal
     rc = ia_pthread_cond_signal( &q->cond_ro );
     ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_signal()" );
-printf("just pushed to queue\n");
     q->count++;
 
     // unlock queue
@@ -58,14 +58,15 @@ ia_image_t* ia_queue_pop( ia_queue_t* q )
     // get lock on queue
     rc = ia_pthread_mutex_lock( &q->mutex );
     ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
-    if( q->w - q->r != 0 || q->count == 0 )
+    if( q->w - q->r == 0 )
     {
         rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
         ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
     }
-    assert( q->w - q->r == 0 );
+    assert( q->w - q->r > 0 );
 
     // pop image off queue
+    //fprintf( stderr, "popping image %p from slot %d\n", (void*)q->list[q->r % q->size], (q->r % q->size));
     iaf = q->list[q->r++ % q->size];
 
     // if someone is waiting to push, send signal
