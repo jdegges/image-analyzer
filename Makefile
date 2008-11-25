@@ -1,11 +1,11 @@
 #CC=/home/jdegges/gumstix/gumstix-oe/tmp/cross/arm-angstrom-linux-gnueabi/bin/gcc
 CC=gcc
-CFLAGS=--fast-math -O5
+CFLAGS=--fast-math -g -W -Wall
 LIBS=-lm -lfreeimage -lpthread
 
 
-ia: image_analyzer.o iaio.o ia_sequence.o analyze.o common.h
-	${CC} ${CFLAGS} image_analyzer.o iaio.o ia_sequence.o analyze.o -o ia ${LIBS}
+ia: image_analyzer.o iaio.o ia_sequence.o analyze.o queue.o common.h
+	${CC} ${CFLAGS} image_analyzer.o iaio.o ia_sequence.o analyze.o queue.o -o ia ${LIBS}
 
 image_analyzer: image_analyzer.c image_analyzer.h common.h
 	${CC} ${CFLAGS} -c image_analyzer.c -l ia_sequence.o
@@ -19,5 +19,8 @@ ias: ia_sequence.h ia_sequence.c common.h
 analyze: analyze.h analyze.c common.h
 	${CC} ${CFLAGS} -c analyze.c
 
+queue: queue.h queue.c common.h
+	${CC} ${CFLAGS} -c queue.c
+
 clean:
-	rm image_analyzer.o iaio.o ia_sequence.o analyze.o ia
+	rm image_analyzer.o iaio.o ia_sequence.o analyze.o queue.o ia

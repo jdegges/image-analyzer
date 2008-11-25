@@ -1,6 +1,8 @@
 #ifndef _H_COMMON
 #define _H_COMMON
 
+#define _XOPEN_SOURCE 500
+
 #include <sys/select.h>
 #include <string.h>
 #include <stdio.h>
@@ -12,7 +14,7 @@
 #include <pthread.h>
 
 #define ia_pixel_t double
-const static int debug = 0;
+static const int debug = 0;
 
 /* ia_image_t: image data structure
  * i_frame: position of this frame in image stream

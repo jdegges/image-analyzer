@@ -7,14 +7,15 @@
 typedef struct ia_queue_t
 {
     ia_image_t** list;
-    size_t r, w;
+    size_t r, w, count, size;
     pthread_mutex_t mutex;
-    size_t size;
+    pthread_cond_t cond_ro;
+    pthread_cond_t cond_rw;
 } ia_queue_t;
 
-ia_queue_t* ia_queue_open( size_t size, int image_size );
-void ia_queue_close( ia_queue_t* iaq );
-void ia_queue_push( ia_image_t* iaf );
-ia_image_t* ia_queue_pop( void );
+ia_queue_t* ia_queue_open( size_t size );
+void ia_queue_close( ia_queue_t* q );
+void ia_queue_push( ia_queue_t* q, ia_image_t* iaf );
+ia_image_t* ia_queue_pop( ia_queue_t* q );
 
 #endif

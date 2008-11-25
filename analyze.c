@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "iaio.h"
@@ -1067,21 +1068,9 @@ void* analyze_exec( void* vptr )
         iaf->users++;
 
         /* wait for output buf (wait for output manager signal) */
-        iar = iax->ias->out[iax->bufno];
-        ia_error( "analyze_exec: -l%d output\n", iax->bufno );
-        rc = ia_pthread_mutex_lock( &iar->mutex );
-        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_lock()" );
-        ia_error( "analyze_exec: +l%d output\n", iax->bufno );
-        if( iar->ready || iar->users )
-        {
-            ia_error( "analyze_exec: -row%d output\n", iax->bufno );
-            rc = ia_pthread_cond_wait( &iar->cond_rw, &iar->mutex );
-            ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_wait()" );
-            ia_error( "analyze_exec: +row%d output\n", iax->bufno );
-        }
-        assert( !iar->ready && !iar->users );
-        iar->users++;
-
+        printf("%d <<<\n", iax->ias->free->count );
+        iar = ia_queue_pop( iax->ias->free );
+        printf("got output buffer from free queue, %d\n", iax->ias->free->count);
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
         {
@@ -1149,16 +1138,8 @@ void* analyze_exec( void* vptr )
         ia_error( "+analyze_exec: +u%d input\n", iax->bufno );
 
         /* close output buf (signal manage output) */
-        iar->ready = true;
-        iar->users = 0;
-        ia_error( "analyze_exec: -s%d output\n", iax->bufno );
-        rc = ia_pthread_cond_signal( &iar->cond_ro );
-        ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_signal()" );
-        ia_error( "analyze_exec: +s%d output\n", iax->bufno );
-        ia_error( "analyze_exec: -u%d output\n", iax->bufno );
-        rc = ia_pthread_mutex_unlock( &iar->mutex );
-        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
-        ia_error( "analyze_exec: +u%d output\n", iax->bufno );
+        printf("pushing onto queue\n");
+        ia_queue_push( iax->ias->output, iar );
     }
 
     ia_free( iax );
@@ -1168,7 +1149,6 @@ void* analyze_exec( void* vptr )
 int analyze( ia_param_t* p )
 {
     int rc, i, i_maxrefs;
-    void* status;
     pthread_t my_threads[MAX_THREADS];
     pthread_attr_t attr;
     pthread_attr_init( &attr );

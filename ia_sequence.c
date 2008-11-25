@@ -213,7 +213,7 @@ void* ia_seq_manage_input( void* vptr )
     uint64_t i_maxrefs = ias->param->i_maxrefs;
     uint64_t i_frame = 0;
     int rc;
-    int bufno;
+    //int bufno;
 
     /* while there is more input */
     for( ;; ) {
@@ -264,10 +264,10 @@ void* ia_seq_manage_output( void* vptr )
 {
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iar;
-    uint64_t i, i_maxrefs = ias->param->i_maxrefs;
+    uint64_t i_maxrefs = ias->param->i_maxrefs;
     uint64_t i_frame = 0;
-    int rc;
-    int time_to_exit = 0;
+    //int rc;
+    uint64_t time_to_exit = 0;
 
     /* while there is more output */
     for( ;; ) {
@@ -275,43 +275,18 @@ void* ia_seq_manage_output( void* vptr )
             pthread_exit( NULL );
         }
 
-        int bufno = i_frame % i_maxrefs;
-        iar = ias->out[bufno];
-
-        ia_error( "manage_output: about to lock mutex of buf %d\n", bufno );
-        rc = ia_pthread_mutex_lock( &iar->mutex );
-        ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_lock()" );
-        ia_error( "manage_output: got lock on buf %d\n", bufno );
-
-        if( !iar->ready )
-        {
-            ia_error( "manage_output: doing cond_ro wait on buf %d\n", bufno );
-            rc = ia_pthread_cond_wait( &iar->cond_ro, &iar->mutex );
-            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_cond_wait()" );
-            ia_error( "manage_output: cond_ro wait returned for buf %d\n", bufno );
-        }
-        assert( iar->ready );
-        iar->users++;
+        iar = ia_queue_pop( ias->output ); // replacement for code from above
+        assert( iar != NULL );
 
         snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
         if( iaio_saveimage(ias->iaio, iar) )
         {
-            rc = ia_pthread_mutex_unlock( &iar->mutex );
-            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_unlock()" );
+            fprintf( stderr, "unable to save image\n" );
             pthread_exit( NULL );
         }
         i_frame++;
 
-        iar->users--;
-        if( !iar->users )
-        {
-            iar->ready = false;
-            rc = ia_pthread_cond_signal( &iar->cond_rw );
-            ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_cond_signal()" );
-        }
-
-        rc = ia_pthread_mutex_unlock( &iar->mutex );
-        ia_pthread_error( rc, "ia_seq_manage_output()", "ia_pthread_mutex_unlock()" );
+        ia_queue_push( ias->free, iar );
     }
 }
 
@@ -376,27 +351,28 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     }
 
     /* allocate output buffers */
-    s->out = ia_queue_open( s->param->i_maxrefs*10, s->param->i_size*3 );
-    if( s->out == NULL )
+    s->output = ia_queue_open( s->param->i_maxrefs*10 );
+    if( s->output == NULL )
         return NULL;
-    /*
-    s->out = ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
-    if( s->out == NULL )
+    s->free = ia_queue_open( s->param->i_maxrefs*10 );
+    if( s->free == NULL )
         return NULL;
-    i = s->param->i_maxrefs;
+    // fill free queue
+    ia_image_t* iaf;
+    i = s->param->i_maxrefs*10;
     while( i-- ) {
-        s->out[i] = ia_malloc( sizeof(ia_image_t) );
-        if( s->out[i] == NULL )
+        iaf = ia_malloc( sizeof(ia_image_t) );
+        if( iaf == NULL )
             return NULL;
-        ia_memset( s->out[i], 0, sizeof(ia_image_t) );
-        s->out[i]->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-        if( s->out[i]->pix == NULL )
+        ia_memset( iaf, 0, sizeof(ia_image_t) );
+        iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
+        if( iaf->pix == NULL )
             return NULL;
-        pthread_mutex_init( &s->out[i]->mutex, NULL );
-        ia_pthread_cond_init( &s->ref[i]->cond_ro, NULL );
-        ia_pthread_cond_init( &s->ref[i]->cond_rw, NULL );
+        pthread_mutex_init( &iaf->mutex, NULL );
+        ia_pthread_cond_init( &iaf->cond_ro, NULL );
+        ia_pthread_cond_init( &iaf->cond_rw, NULL );
+        ia_queue_push( s->free, iaf );
     }
-    */
 
     s->i_frame = 0;
 
@@ -433,6 +409,12 @@ inline void ia_seq_close( ia_seq_t* s )
 
     iaio_close( s->iaio );
 
+    while( s->free->count )
+        ia_free( ia_queue_pop(s->free) );
+    while( s->output->count )
+        ia_free( ia_queue_pop(s->output) );
+    ia_queue_close( s->free );
+    ia_queue_close( s->output );
 
     while( s->param->i_maxrefs-- )
     {
@@ -440,19 +422,19 @@ inline void ia_seq_close( ia_seq_t* s )
         pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_ro );
         pthread_cond_destroy( &s->ref[s->param->i_maxrefs]->cond_rw );
 
-        pthread_mutex_destroy( &s->out[s->param->i_maxrefs]->mutex );
-        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_rw );
-        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_ro );
+//        pthread_mutex_destroy( &s->out[s->param->i_maxrefs]->mutex );
+//        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_rw );
+//        pthread_cond_destroy( &s->out[s->param->i_maxrefs]->cond_ro );
 
 
         ia_free( s->ref[s->param->i_maxrefs]->pix );
         ia_free( s->ref[s->param->i_maxrefs] );
 
-        ia_free( s->out[s->param->i_maxrefs]->pix );
-        ia_free( s->out[s->param->i_maxrefs] );
+//        ia_free( s->out[s->param->i_maxrefs]->pix );
+//        ia_free( s->out[s->param->i_maxrefs] );
     }
 
     ia_free( s->ref );
-    ia_free( s->out );
+//    ia_free( s->out );
     ia_free( s );
 }

@@ -9,15 +9,16 @@
 #include "common.h"
 #include "image_analyzer.h"
 #include "iaio.h"
+#include "queue.h"
 
 #define MAX_THREADS 32
 
 
 typedef struct ia_seq_t
 {
-    ia_image_t**        ref;       // previous i_nref frames
-    //ia_image_t**        out;        // output buffers
-    ia_queue_t*         out;
+    ia_image_t**        ref;        // previous i_nref frames
+    ia_queue_t*         output;     // output queue
+    ia_queue_t*         free;       // free buffer queue
 
     uint64_t            i_frame;    // position of iaf in sequence
     ia_param_t*         param;      // contains all parameters

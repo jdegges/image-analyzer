@@ -308,14 +308,13 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
         }
 
         assert( buf.index < iaio->cam.i_buffers );
-
         if( iaio->cam.palette == 1 )
             ia_memcpy_uint8_to_pixel( iaf->pix, iaio->cam.buffers[buf.index].start, iaio->cam.data_size );
         else if( iaio->cam.palette == 2 )
             yuv420torgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
         else if( iaio->cam.palette == 3 )
             yuyvtorgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
-
+        
         if( xioctl(iaio->cam.fd,VIDIOC_QBUF,&buf) == -1 )
             errno_exit( iaio->cam.fd,"VIDIOC_QBUF" );
 
