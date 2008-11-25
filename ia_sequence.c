@@ -12,6 +12,7 @@
 #include "ia_sequence.h"
 #include "analyze.h"
 
+/*
 ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size )
 {
     ia_image_t** iab = malloc( sizeof(ia_image_t*)*size );
@@ -40,7 +41,7 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
             {
                 iaf = ias->ref[k];
 
-                /* get lock on image */
+                // get lock on image
                 rc = pthread_mutex_lock( &iaf->mutex );
                 if( rc != 0 ) {
                     fprintf( stderr, "ERROR: ia_seq_get_input_bufs(): pthread_mutex_lock returned code %d\n", rc );
@@ -54,7 +55,7 @@ ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size 
                     j++;
                 }
 
-                /* unlock image */
+                // unlock image
                 rc = ia_pthread_mutex_unlock( &iaf->mutex );
                 if( rc != 0 ) {
                     fprintf( stderr, "ERROR: ia_seq_get_input_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -75,7 +76,6 @@ inline void ia_seq_close_input_bufs( ia_image_t** iab, int8_t size )
 
     while( size-- )
     {
-        /* get lock on image */
         rc = pthread_mutex_lock( &iab[size]->mutex );
         if( rc != 0 ) {
             fprintf( stderr, "ERROR: ia_seq_close_input_bufs(): pthread_mutex_lock returned code %d\n", rc );
@@ -86,7 +86,6 @@ inline void ia_seq_close_input_bufs( ia_image_t** iab, int8_t size )
         if( iab[size]->users == 0 )
             iab[size]->ready = false;
 
-        /* unlock image */
         rc = ia_pthread_mutex_unlock( &iab[size]->mutex );
         if( rc != 0 ) {
             fprintf( stderr, "ERROR: ia_seq_close_input_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -108,9 +107,7 @@ ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
     if( size > ias->param->i_maxrefs )
         return NULL;
 
-    /* acquire size output buffers */
     do {
-        /* for each possible output buffer */
         for( k = 0; k < ias->param->i_maxrefs && i < size; k++ ) {
             iaf = ias->out[k];
 
@@ -125,14 +122,12 @@ ia_image_t** ia_seq_get_output_bufs( ia_seq_t* ias, uint8_t size, uint64_t num )
                 return NULL;
             }
 
-            /* if this buffer is not being used */
             if( !iaf->ready && iaf->users == 0 )
             {
                 iaf->users++;
                 iab[i++] = iaf;
                 snprintf(iaf->name,1024,"image-%05lld.bmp",num);
             } else {
-                /* unlock image */
                 rc = ia_pthread_mutex_unlock( &iaf->mutex );
                 if( rc != 0 ) {
                     fprintf( stderr, "ERROR: ia_seq_get_output_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -155,7 +150,6 @@ inline void ia_seq_close_output_bufs( ia_image_t** iab, int8_t size )
         assert( iab[size]->users == 0 );
         iab[size]->ready = true;
 
-        /* unlock image */
         rc = ia_pthread_mutex_unlock( &iab[size]->mutex );
         if( rc != 0 ) {
             fprintf( stderr, "ERROR: ia_seq_close_output_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -173,23 +167,19 @@ void ia_seq_wait_for_output( ia_seq_t* ias )
 
     i = k = 0;
 
-    /* make sure all output buffers have been written */
     for( i = 0; i < ias->param->i_maxrefs; i++ )
     {
         for( ;; ) {
             if( !ias->out[i]->ready && ias->out[i]->users == 0 ) {
                 iaf = ias->out[i];
 
-                /* get lock on image */
                 rc = pthread_mutex_lock( &iaf->mutex );
                 if( rc != 0 ) {
                     fprintf( stderr, "ERROR: ia_seq_get_output_bufs(): pthread_mutex_lock returned code %d\n", rc );
                     return;
                 }
 
-                /* make sure output buffer is not in use */
                 if( !iaf->ready && iaf->users == 0 ) {
-                    /* unlock image */
                     rc = ia_pthread_mutex_unlock( &iaf->mutex );
                     if( rc != 0 ) {
                         fprintf( stderr, "ERROR: ia_seq_get_output_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -198,7 +188,6 @@ void ia_seq_wait_for_output( ia_seq_t* ias )
                     break;
                 }
 
-                /* unlock image */
                 rc = ia_pthread_mutex_unlock( &iaf->mutex );
                 if( rc != 0 ) {
                     fprintf( stderr, "ERROR: ia_seq_get_output_bufs(): ia_pthread_mutex_unlock returned code %d\n", rc );
@@ -210,6 +199,7 @@ void ia_seq_wait_for_output( ia_seq_t* ias )
     }
     return;
 }
+*/
 
 /*
  * ia_seq_manage_input:
@@ -386,6 +376,10 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     }
 
     /* allocate output buffers */
+    s->out = ia_queue_open( s->param->i_maxrefs*10, s->param->i_size*3 );
+    if( s->out == NULL )
+        return NULL;
+    /*
     s->out = ia_malloc( sizeof(ia_image_t*)*s->param->i_maxrefs );
     if( s->out == NULL )
         return NULL;
@@ -402,6 +396,7 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         ia_pthread_cond_init( &s->ref[i]->cond_ro, NULL );
         ia_pthread_cond_init( &s->ref[i]->cond_rw, NULL );
     }
+    */
 
     s->i_frame = 0;
 
