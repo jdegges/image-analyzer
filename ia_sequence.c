@@ -29,7 +29,7 @@ void* ia_seq_manage_input( void* vptr )
         iaf = ia_queue_pop( ias->input_free );
         
         /* capture new frame, if error/eof -> exit */
-        if( iaio_getimage(ias->iaio, iaf) )
+        if( i_frame > 200 || iaio_getimage(ias->iaio, iaf) )
         {
             fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
             ias->iaio->eoi = true;

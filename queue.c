@@ -43,12 +43,19 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
     int rc;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
-    if( q->count >= q->size )
-    {
-        rc = ia_pthread_cond_wait( &q->cond_rw, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
+    while( 1 ) {
+        rc = ia_pthread_mutex_lock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
+        if( q->count >= q->size )
+        {
+            rc = ia_pthread_cond_wait( &q->cond_rw, &q->mutex );
+            ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
+        }
+        if( q->count < q->size )
+            break;
+        rc = ia_pthread_mutex_unlock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
+        usleep( 5 );
     }
     assert( q->count < q->size );
 
@@ -73,12 +80,19 @@ ia_image_t* ia_queue_pop( ia_queue_t* q )
     ia_image_t* iaf;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
-    if( q->count == 0 )
-    {
-        rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
+    while( 1 ) {
+        rc = ia_pthread_mutex_lock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
+        if( q->count == 0 )
+        {
+            rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
+            ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
+        }
+        if( q->count > 0 )
+            break;
+        rc = ia_pthread_mutex_unlock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
+        usleep( 5 );
     }
     assert( q->count > 0 );
 
