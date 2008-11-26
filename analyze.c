@@ -1046,31 +1046,24 @@ static inline void analyze_deinit( ia_seq_t* s )
 
 void* analyze_exec( void* vptr )
 {
-    int j, rc;
+    int j;
     ia_exec_t* iax = (ia_exec_t*) vptr;
     ia_image_t *iaf, *iar;
     while( 1 )
     {
         /* wait for input buf (wait for input manager signal) */
-        iaf = iax->ias->ref[iax->bufno];
-        ia_error( "analyze_exec: -l%d input\n", iax->bufno );
-        rc = ia_pthread_mutex_lock( &iaf->mutex );
-        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_lock()" );
-        ia_error( "analyze_exec: +l%d input\n", iax->bufno );
-        if( !iaf->ready )
-        {
-            ia_error( "analyze_exec: -row%d input\n", iax->bufno );
-            rc = ia_pthread_cond_wait( &iaf->cond_ro, &iaf->mutex );
-            ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_cond_wait()" );
-            ia_error( "analyze_exec: +row%d input\n", iax->bufno );
+        iaf = ia_queue_pop( iax->ias->input_queue );
+        if( iaf->users < 0 ) {
+            ia_queue_push( iax->ias->input_free, iaf );
+            iar = ia_queue_pop( iax->ias->output_free );
+            iar->users = -1;
+            ia_queue_push( iax->ias->output_queue, iar );
+            pthread_exit( NULL );
         }
-        assert( iaf->ready );
-        iaf->users++;
 
         /* wait for output buf (wait for output manager signal) */
-        //printf("%d <<<\n", iax->ias->free->count );
-        iar = ia_queue_pop( iax->ias->free );
-        //printf("got output buffer from free queue, %d\n", iax->ias->free->count);
+        iar = ia_queue_pop( iax->ias->output_free );
+
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
         {
@@ -1123,23 +1116,11 @@ void* analyze_exec( void* vptr )
         }
 
         /* close input buf (signal manage input) */
-        iaf->users--;
-        if( !iaf->users )
-        {
-            iaf->ready = false;
-            ia_error( "analyze_exec: -s%d input\n", iax->bufno );
-            rc = ia_pthread_cond_signal( &iaf->cond_rw );
-            ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_signal()" );
-            ia_error( "analyze_exec: +s%d input\n", iax->bufno );
-        }
-        ia_error( "analyze_exec: -u%d input\n", iax->bufno );
-        rc = ia_pthread_mutex_unlock( &iaf->mutex );
-        ia_pthread_error( rc, "analyze_exec()", "ia_ptherad_mutex_unlock()" );
-        ia_error( "+analyze_exec: +u%d input\n", iax->bufno );
+        ia_queue_push( iax->ias->input_free, iaf );
 
         /* close output buf (signal manage output) */
         //printf("pushing onto queue\n");
-        ia_queue_push( iax->ias->output, iar );
+        ia_queue_push( iax->ias->output_queue, iar );
     }
 
     ia_free( iax );
@@ -1149,6 +1130,7 @@ void* analyze_exec( void* vptr )
 int analyze( ia_param_t* p )
 {
     int rc, i, i_maxrefs;
+    void* status;
     pthread_t my_threads[MAX_THREADS];
     pthread_attr_t attr;
     pthread_attr_init( &attr );
@@ -1186,7 +1168,8 @@ int analyze( ia_param_t* p )
     
     for( i = 0; i < i_maxrefs; i++ )
     {
-        rc = pthread_cancel( my_threads[i] );
+        rc = pthread_join( my_threads[i], &status );
+//        rc = pthread_cancel( my_threads[i] );
         if( rc ) {
             fprintf( stderr, "analyze(): ia_pthread_join() returned code %d\n", rc );
             return 1;
@@ -1194,8 +1177,8 @@ int analyze( ia_param_t* p )
         printf("thread %d finished\n", i );
     }
 
-    pthread_cancel( ias->tio[0] );
-    pthread_cancel( ias->tio[1] );
+//    pthread_cancel( ias->tio[0] );
+//    pthread_cancel( ias->tio[1] );
 
     printf(" done\n");
 

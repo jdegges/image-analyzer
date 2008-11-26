@@ -16,9 +16,11 @@
 
 typedef struct ia_seq_t
 {
-    ia_image_t**        ref;        // previous i_nref frames
-    ia_queue_t*         output;     // output queue
-    ia_queue_t*         free;       // free buffer queue
+    ia_queue_t*         input_queue;    // input frames
+    ia_queue_t*         input_free;
+
+    ia_queue_t*         output_queue;   // output queue
+    ia_queue_t*         output_free;    // free buffer queue
 
     uint64_t            i_frame;    // position of iaf in sequence
     ia_param_t*         param;      // contains all parameters

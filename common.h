@@ -30,7 +30,7 @@ typedef struct
     uint64_t    i_frame;
     ia_pixel_t* pix;
     char        name[1024];
-    uint8_t     users;
+    int         users;
     bool        ready;
     pthread_mutex_t mutex;
     pthread_cond_t cond_ro;

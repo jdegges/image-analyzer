@@ -583,7 +583,7 @@ static inline void iaio_file_close( iaio_t* iaio )
     fclose( iaio->fin.filp );
     printf("freeing fin.buf\n");
     fflush(stdout);
-    free( iaio->fin.buf );
+    ia_free( iaio->fin.buf );
 }
 
 iaio_t* iaio_open( ia_seq_t* ias )
@@ -617,15 +617,14 @@ iaio_t* iaio_open( ia_seq_t* ias )
 
 inline void iaio_close( iaio_t* iaio )
 {
-    printf("freeing dib\n");
     FreeImage_Unload( iaio->dib );
 
-    printf("closing file/cam\n");
     if( iaio->fin.filp == NULL )
         iaio_cam_close( iaio );
     else
         iaio_file_close( iaio );
 
-    printf("freeing iaio_t\n");
+    printf("freeing iaio\n"); fflush(stdout);
     free( iaio );
+    printf("returning from iaio_close()"); fflush(stdout);
 }

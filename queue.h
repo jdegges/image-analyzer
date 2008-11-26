@@ -1,5 +1,5 @@
-#ifndef __H_QUEUE
-#define __H_QUEUE
+#ifndef _H_QUEUE
+#define _H_QUEUE
 
 #include <pthread.h>
 #include "common.h"
@@ -7,7 +7,7 @@
 typedef struct ia_queue_t
 {
     ia_image_t** list;
-    size_t r, w, count, size;
+    uint64_t r, w, count, size;
     pthread_mutex_t mutex;
     pthread_cond_t cond_ro;
     pthread_cond_t cond_rw;
