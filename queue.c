@@ -1,3 +1,8 @@
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
+#include <unistd.h>
 #include <pthread.h>
 #include <assert.h>
 

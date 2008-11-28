@@ -2,10 +2,15 @@
 #define _H_IAIO
 
 #include <FreeImage.h>
+#include <SDL/SDL.h>
 #include "common.h"
 #include "image_analyzer.h"
 #include "ia_sequence.h"
 
+#define IAIO_DISK       1
+#define IAIO_DISPLAY    2
+#define IAIO_CAMERA     3
+#define IAIO_FILE       4
 
 /* video device interface object */
 typedef struct iaio_cam_buffers
@@ -39,10 +44,14 @@ typedef struct iaio_file_t
 
 typedef struct iaio_t
 {
-    iaio_cam_t      cam;        // for cam io
-    iaio_file_t     fin;        // for file io
+    uint8_t         input_type;
+    uint8_t         output_type;
 
-    FIBITMAP*   dib;            // buffer for writing images to disk
+    iaio_cam_t      cam;        // for cam input
+    iaio_file_t     fin;        // for file input
+
+    SDL_Surface*    screen;     // for displaying video
+    FIBITMAP*       dib;            // for writing images to disk
     uint64_t    last_frame;
     uint32_t    i_size;
     uint32_t    i_width;
@@ -54,7 +63,7 @@ typedef struct iaio_t
 int iaio_getimage( iaio_t* iaio, ia_image_t* iaf );
 
 /* stores image data from iaf into file specified by str */
-int	iaio_saveimage( iaio_t* iaio, ia_image_t* iar );
+int iaio_outputimage( iaio_t* iaio, ia_image_t* iar );
 
 /* open iaio object */
 iaio_t* iaio_open( ia_seq_t* ias );

@@ -13,36 +13,61 @@
 #include <unistd.h>
 #include <assert.h>
 
-//#include <opencv/cv.h>
-//#include <opencv/highgui.h>
-
 /* iaio includes */
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-#include <FreeImage.h>
-
 #include "iaio.h"
-#include "common.h"
-#include "ia_sequence.h"
 
-int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
+static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
+{
+    if( SDL_MUSTLOCK(iaio->screen) ) {
+        if( SDL_LockSurface(iaio->screen) < 0 ) {
+            fprintf( stderr, "Can't lock screen: %s\n", SDL_GetError() );
+            return 1;
+        }
+    }
+
+    ia_memcpy_pixel_to_uint8( (uint8_t*) iaio->screen->pixels, iar->pix, iaio->i_size*3 );
+
+    if( SDL_MUSTLOCK(iaio->screen) ) {
+        SDL_UnlockSurface( iaio->screen );
+    }
+
+    SDL_UpdateRect( iaio->screen, 0, 0, 0, 0 );
+    return 0;
+}
+
+static inline int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
 {
     if ( iaio->dib == NULL )
         return 1;
 
     ia_memcpy_pixel_to_uint8( FreeImage_GetBits(iaio->dib),iar->pix,iaio->i_size*3 );
-    fflush(stdout);
 
-    if ( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),iaio->dib,iar->name,0) ) {
-        fflush(stdout);
+    if ( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),iaio->dib,iar->name,0) )
         return 0;
-    }
-    printf("FAILED write to %s\n",iar->name); fflush(stdout);
+
+    fprintf( stderr, "iaio_saveimage(): FAILED write to %s\n", iar->name );
     
     return 1;
+}
+
+int iaio_outputimage( iaio_t* iaio, ia_image_t* iar )
+{
+    if( iaio->output_type & IAIO_DISK )
+    {
+        if( iaio_saveimage(iaio, iar) )
+            return 1;
+    }
+    if( iaio->output_type & IAIO_DISPLAY )
+    {
+        if( iaio_displayimage(iaio, iar) )
+            return 1;
+    }
+    return 0;
 }
 
 static inline int xioctl( int fd, int request, void* arg )
@@ -253,7 +278,7 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
     FreeImage_Unload( dib );
     dib = dib24;
 
-    ia_memcpy_uint8_to_pixel( iaf->pix,FreeImage_GetBits(dib),FreeImage_GetWidth(dib)*FreeImage_GetHeight(dib)*3 );
+    ia_memcpy_uint8_to_pixel( iaf->pix,FreeImage_GetBits(dib),iaio->i_size*3 );
 
     FreeImage_Unload ( dib );
     return 0;
@@ -330,24 +355,20 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
 int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
     /* if reading from list of images */
-    if( iaio->fin.filp != NULL ) {
+    if( iaio->input_type & IAIO_FILE ) {
         if( iaio_file_getimage(iaio, iaf) ) {
             fprintf( stderr, "ERROR: iaio_getimage(): couldn't open image from file\n" );
             return 1;
         }
     }
     /* if reading from camera */
-    else if( iaio->cam.buffers != NULL ) {
+    if( iaio->input_type & IAIO_CAMERA ) {
         if( iaio_cam_getimage(iaio, iaf) < 0 ) {
             fprintf( stderr, "ERROR: iaio_getimage(): couldn't get image from cam\n" );
             return 1;
         }
     }
-    /* else error! */
-    else {
-        fprintf( stderr, "ERROR: iaio_getimage(): no input device registered\n" );
-        return 1;
-    }
+
     return 0;
 }
 
@@ -569,11 +590,6 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
         return 1;
     }
 
-//    iaio->fin.filp = fopen( iaio->fin.filename, "r" );
-//    if( fin->filp == NULL ) {
-//        fprintf( stderr, "ERROR: iaio_file_init(): error opening input file\n" );
-//        return 1;
-//    }
     return 0;
 }
 
@@ -586,16 +602,42 @@ static inline void iaio_file_close( iaio_t* iaio )
     ia_free( iaio->fin.buf );
 }
 
+static inline int iaio_display_init( iaio_t* iaio )
+{
+    iaio->screen = NULL;
+
+    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
+        fprintf( stderr, "Couldn't initialize SDL: %s\n", SDL_GetError() );
+        return 1;
+    }
+
+    iaio->screen = SDL_SetVideoMode( iaio->i_width, iaio->i_height, 24, SDL_SWSURFACE ); 
+    if( iaio->screen == NULL ) {
+        fprintf( stderr, "Couldn't set 1024x768x8 video mode: %s\n", SDL_GetError() );
+        return 1;
+    }
+
+    return 0;
+}
+
+static inline void iaio_display_close( void )
+{
+    SDL_Quit();
+}
+
 iaio_t* iaio_open( ia_seq_t* ias )
 {
     iaio_t* iaio = malloc( sizeof(iaio_t) );
 
     iaio->fin.filp = NULL;
     iaio->fin.buf = NULL;
+    iaio->input_type =
+    iaio->output_type = 0;
 
     /* if cam input */
     if( ias->param->b_vdev )
     {
+        iaio->input_type |= IAIO_CAMERA;
         if( iaio_cam_init(iaio, ias->param) )
         {
             fprintf( stderr, "ERROR: iaio_open(): failed to initialize input file\n" );
@@ -603,28 +645,45 @@ iaio_t* iaio_open( ia_seq_t* ias )
         }
     }
     /* if file input */
-    else if( iaio_file_init(iaio, ias->param) )
+    else
     {
-        fprintf( stderr, "ERROR: iaio_open(): failed to initialize camera\n" );
-        return NULL;
+        iaio->input_type |= IAIO_FILE;
+        if( iaio_file_init(iaio, ias->param) )
+        {
+            fprintf( stderr, "ERROR: iaio_open(): failed to initialize camera\n" );
+            return NULL;
+        }
     }
 
-    iaio->dib = FreeImage_AllocateT( FIT_BITMAP, iaio->i_width, iaio->i_height, 24,
+    if( ias->param->output_directory[0] )
+    {
+        iaio->output_type |= IAIO_DISK;
+        iaio->dib = FreeImage_AllocateT( FIT_BITMAP, iaio->i_width, iaio->i_height, 24,
                                      FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
+
+    }
+    if( ias->param->display )
+    {
+        iaio->output_type |= IAIO_DISPLAY;
+        iaio_display_init( iaio );
+    }
+
     iaio->eoi = false;
+
     return iaio;
 }
 
 inline void iaio_close( iaio_t* iaio )
 {
-    FreeImage_Unload( iaio->dib );
+    if( iaio->output_type & IAIO_DISK )
+        FreeImage_Unload( iaio->dib );
+    if( iaio->output_type & IAIO_DISPLAY )
+        iaio_display_close();
 
-    if( iaio->fin.filp == NULL )
+    if( iaio->input_type & IAIO_CAMERA )
         iaio_cam_close( iaio );
-    else
+    if( iaio->input_type & IAIO_FILE )
         iaio_file_close( iaio );
 
-    printf("freeing iaio\n"); fflush(stdout);
     free( iaio );
-    printf("returning from iaio_close()"); fflush(stdout);
 }

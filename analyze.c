@@ -1009,12 +1009,11 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
             case BHATTA:
                 //bhatta_init( ias );
                 break;
-            case DIFF:
-                break;
             default:
                 break;
         }
     }
+    fprintf( stderr, "finished initializing filters\n" );
     return ias;
 }
 
@@ -1034,8 +1033,6 @@ static inline void analyze_deinit( ia_seq_t* s )
             case BHATTA:
                 //bhatta_close( s );
                 break;
-            case DIFF:
-                break;
             default:
                 break;
         }
@@ -1046,7 +1043,7 @@ static inline void analyze_deinit( ia_seq_t* s )
 
 void* analyze_exec( void* vptr )
 {
-    int j;
+    int j, no_filter = 0;
     ia_exec_t* iax = (ia_exec_t*) vptr;
     ia_image_t *iaf, *iar;
     while( 1 )
@@ -1065,7 +1062,7 @@ void* analyze_exec( void* vptr )
         iar = ia_queue_pop( iax->ias->output_free );
 
         /* do processing */
-        for ( j = 0; iax->ias->param->filter[j] != 0; j++ )
+        for ( j = 0; iax->ias->param->filter[j] != 0 && no_filter >= 0; j++ )
         {
             switch ( iax->ias->param->filter[j] )
             {
@@ -1111,16 +1108,25 @@ void* analyze_exec( void* vptr )
 //                    monkey( ias );
                     break;
                 default:
+                    no_filter++;
                     break;
             }
         }
+        if( no_filter == j || no_filter == -1 )
+        {
+            no_filter = -1;
+            ia_queue_push( iax->ias->output_queue, iaf );
+            ia_queue_push( iax->ias->input_free, iar );
+        }
+        else
+        {
+            no_filter = 0;
+            /* close input buf (signal manage input) */
+            ia_queue_push( iax->ias->input_free, iaf );
 
-        /* close input buf (signal manage input) */
-        ia_queue_push( iax->ias->input_free, iaf );
-
-        /* close output buf (signal manage output) */
-        //printf("pushing onto queue\n");
-        ia_queue_push( iax->ias->output_queue, iar );
+            /* close output buf (signal manage output) */
+            ia_queue_push( iax->ias->output_queue, iar );
+        }
     }
 
     ia_free( iax );

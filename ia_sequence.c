@@ -80,7 +80,7 @@ void* ia_seq_manage_output( void* vptr )
 
 
         snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
-        if( iaio_saveimage(ias->iaio, iar) )
+        if( iaio_outputimage(ias->iaio, iar) )
         {
             fprintf( stderr, "unable to save image\n" );
             pthread_exit( NULL );
@@ -160,7 +160,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
         ia_pthread_cond_init( &iaf->cond_rw, NULL );
         ia_queue_push( s->output_free, iaf );
     }
-
     s->i_frame = 0;
 
     pthread_attr_init( &s->attr );

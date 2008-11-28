@@ -1,7 +1,7 @@
 #CC=/home/jdegges/gumstix/gumstix-oe/tmp/cross/arm-angstrom-linux-gnueabi/bin/gcc
 CC=gcc
 CFLAGS=--fast-math -O6
-LIBS=-lm -lfreeimage -lpthread
+LIBS=-lm -lfreeimage -lpthread -lSDL
 
 
 ia: image_analyzer.o iaio.o ia_sequence.o analyze.o queue.o common.h

@@ -18,6 +18,7 @@ typedef struct
     int i_mb_size; 
     int b_verbose;
     int b_vdev;     // true if capturing from video device
+    int display;
 
     /* bgsub code params */
     struct {

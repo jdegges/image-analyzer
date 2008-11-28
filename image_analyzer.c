@@ -82,6 +82,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     p->i_width = 0;
     p->i_height = 0;
     p->b_vdev = 1;
+    p->display = 0;
 
 	for ( ;; )
 	{
@@ -91,7 +92,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			{"output"       ,1,0,0},
 			{"filter"       ,1,0,0},
 			{"mb-size"      ,1,0,0},
-			{"pretty"       ,0,0,0},
+			{"display"      ,0,0,0},
 			{"stats"        ,0,0,0},
 			{"help"         ,0,0,0},
             {"width"        ,1,0,0},
@@ -117,7 +118,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"monkey"}
 		};
 
-		c = getopt_long ( argc,argv,"i:o:f:b:pshc:r:vd:",long_options,&option_index );
+		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:",long_options,&option_index );
 		if ( c == -1 )
 			break;
 
@@ -157,20 +158,21 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		}
 		else if ( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
 		{
+            p->display = 1;
 		}
 		else if ( (option_index == 5 && c == 0) || (option_index == 0 && c == 's') )
 		{
 		}
-		else if ( (option_index == 6 && c == 0) || (option_index == 0 && c == 'h') )
+		else if ( option_index == 6 && c == 0 )
 		{
 			usage ();
 			return 1;
 		}
-        else if ( (option_index == 7 && c == 0) || (option_index == 0 && c == 'c') )
+        else if ( (option_index == 7 && c == 0) || (option_index == 0 && c == 'w') )
         {
             p->i_width = strtoul( optarg,NULL,10 );
         }
-        else if ( (option_index == 8 && c == 0) || (option_index == 0 && c == 'r') )
+        else if ( (option_index == 8 && c == 0) || (option_index == 0 && c == 'h') )
         {
             p->i_height = strtoul( optarg,NULL,10 );
         }
@@ -219,16 +221,18 @@ void usage ( void )
 	printf ( "  -o, --output <string>           Directory to store output into\n" );
     printf ( "  -d, --video-device <string>     Video device to capture images from [/dev/video0]\n" );
     printf ( "  -x, --ext <string>              Output file name extension [bmp]\n" );
+    printf ( "  -p, --display                   Display live output\n" );
 	printf ( "\n" );
 	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence\n" );
-	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,curv,ssd,me,blobs,monkey\n" );
-    printf ( "  -c, --width <int>               Image width, must be specified in video capture mode\n" );
-    printf ( "  -r, --height <int>              Image height, must be specified in video capture mode\n" );
+	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,\n" );
+    printf ( "                                      curv,ssd,me,blobs,monkey\n" );
+    printf ( "  -w, --width <int>               Image width, must be specified in video capture mode\n" );
+    printf ( "  -h, --height <int>              Image height, must be specified in video capture mode\n" );
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
     printf ( "  -b, --mb-size <int>             Macroblock size to use in filters that use macroblocks [15]\n" );
     printf ( "\n" );
 	printf ( "  -s, --stats                     Calculates and prints statistics [not available]\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );
-	printf ( "  -h, --help                      Display this help menu\n" );
+	printf ( "  --help                          Display this help menu\n" );
 	printf ( "\n" );
 }

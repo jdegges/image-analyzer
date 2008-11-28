@@ -17,7 +17,6 @@
 #define MBOX    11
 #define MONKEY  12
 
-
 ia_bhatta_t b;
 
 int     analyze( ia_param_t* p );
