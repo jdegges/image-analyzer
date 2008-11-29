@@ -255,7 +255,7 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
     FREE_IMAGE_FORMAT fif;
 
     if( ia_fgets(iaio->fin.buf, 1024, iaio->fin.filp) == NULL ) {
-        fprintf( stderr, "ERROR: iaio_file_getimage(): error getting file name off input file\n" );
+        //fprintf( stderr, "ERROR: iaio_file_getimage(): error getting file name off input file\n" );
         return 1;
     }
     char* str = ia_strtok( iaio->fin.buf, "\n" );
@@ -357,7 +357,7 @@ int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
     /* if reading from list of images */
     if( iaio->input_type & IAIO_FILE ) {
         if( iaio_file_getimage(iaio, iaf) ) {
-            fprintf( stderr, "ERROR: iaio_getimage(): couldn't open image from file\n" );
+            //fprintf( stderr, "ERROR: iaio_getimage(): couldn't open image from file\n" );
             return 1;
         }
     }
@@ -595,9 +595,9 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
 
 static inline void iaio_file_close( iaio_t* iaio )
 {
-    printf("closing fin\n"); fflush(stdout);
+//    printf("closing fin\n"); fflush(stdout);
     fclose( iaio->fin.filp );
-    printf("freeing fin.buf\n");
+//    printf("freeing fin.buf\n");
     fflush(stdout);
     ia_free( iaio->fin.buf );
 }

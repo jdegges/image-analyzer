@@ -83,6 +83,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     p->i_height = 0;
     p->b_vdev = 1;
     p->display = 0;
+    p->i_threads = 1;
 
 	for ( ;; )
 	{
@@ -101,6 +102,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"video-device" ,1,0,0},
             {"refs"         ,1,0,0},
             {"ext"          ,1,0,0},
+            {"threads"      ,1,0,0},
 			{0              ,0,0,0}
 		};
 		char filters[][15] = {
@@ -135,7 +137,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		{
 			fltr = NULL;
 			fltr = strtok ( optarg,"," );
-			for ( c = 0; c < 10 && fltr != NULL; c++ )
+			for ( c = 0; c < 15 && fltr != NULL; c++ )
 			{
 				for ( i = 0; i < 12; i++ )
 				{
@@ -192,6 +194,10 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
         {
             strncpy( p->ext,optarg,10 );
         }
+        else if ( (option_index == 13 && c == 0) || (option_index == 0 && c == 't') )
+        {
+            p->i_threads = strtoul( optarg,NULL,10 );
+        }
 		else
 		{
 			fprintf ( stderr,"Unrecognized option -%c\n",c );
@@ -231,6 +237,7 @@ void usage ( void )
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
     printf ( "  -b, --mb-size <int>             Macroblock size to use in filters that use macroblocks [15]\n" );
     printf ( "\n" );
+    printf ( "  -t, --threads <int>             Parallel processing\n" );
 	printf ( "  -s, --stats                     Calculates and prints statistics [not available]\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );
 	printf ( "  --help                          Display this help menu\n" );

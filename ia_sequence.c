@@ -12,6 +12,9 @@
 #include "ia_sequence.h"
 #include "analyze.h"
 
+#define OUTPUT_BUFFER_SIZE 60
+#define INPUT_BUFFER_SIZE 30
+
 /*
  * ia_seq_manage_input:
  *  vptr: an ia_seq_t* data structure
@@ -21,7 +24,7 @@ void* ia_seq_manage_input( void* vptr )
 {
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iaf;
-    uint64_t i_maxrefs = ias->param->i_maxrefs;
+    uint64_t i_threads = ias->param->i_threads;
     uint64_t i_frame = 0;
 
     /* while there is more input */
@@ -31,17 +34,15 @@ void* ia_seq_manage_input( void* vptr )
         /* capture new frame, if error/eof -> exit */
         if( i_frame > 200 || iaio_getimage(ias->iaio, iaf) )
         {
-            fprintf( stderr, "EOI: ia_seq_manage_input(): end of input\n" );
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
-            iaf->users = -1;
-            while( i_maxrefs-- ) {
+            iaf->eoi = true;
+            while( i_threads-- ) {
                 ia_queue_push( ias->input_queue, iaf );
                 iaf = ia_queue_pop( ias->input_free );
-                iaf->users = -1;
+                iaf->eoi = true;
             }
             ia_queue_push( ias->input_queue, iaf );
-            fprintf( stderr, "closing input manager\n" );
             pthread_exit( NULL );
         }
         snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
@@ -60,19 +61,21 @@ void* ia_seq_manage_output( void* vptr )
 {
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iar;
-    uint64_t i_maxrefs = ias->param->i_maxrefs;
+    uint64_t i_threads = ias->param->i_threads;
     uint64_t i_frame = 0;
-    int end = i_maxrefs;
+    int end = i_threads;
 
     /* while there is more output */
     for( ;; ) {
         iar = ia_queue_pop( ias->output_queue );
         assert( iar != NULL );
-        if( iar->users < 0 ) {
+        if( iar->eoi ) {
             end--;
-            ia_queue_push( ias->output_free, iar );
+            if( ia_queue_is_full(ias->output_free) )
+                ia_queue_shove( ias->output_free, iar );
+            else
+                ia_queue_push( ias->output_free, iar );
             if( end == 0 ) {
-                fprintf( stderr, "closing output manager\n" );
                 pthread_exit( NULL );
             }
             continue;
@@ -87,9 +90,55 @@ void* ia_seq_manage_output( void* vptr )
         }
         i_frame++;
 
-        ia_queue_push( ias->output_free, iar );
+        if( ia_queue_is_full(ias->output_free) )
+            ia_queue_shove( ias->output_free, iar );
+        else
+            ia_queue_push( ias->output_free, iar );
     }
 }
+
+/*
+ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint8_t num )
+{
+    int rc, pos = 0;
+    uint64_t frameno;
+    ia_image_t** ial;
+    ia_image_t* iaf;
+    
+    if( num > ias->input_queue->size )
+        return NULL;
+
+    ial = malloc( sizeof(ia_image_t*)*num );
+    if( ial == NULL )
+        return NULL;
+
+    ial[pos] = ia_queue_pop( ias->input_queue );
+    frameno = ial[pos]->i_frame;
+    ia_queue_push_to( ias->proc_queue, ial[pos], frameno );
+
+    if( frameno < ias->input_queue->size )
+    {
+        ia_free( ial[pos] );
+        return NULL;
+    }
+
+    while( --num )
+    {
+        ial[++pos] = ia_queue_pop_from( ias->proc_queue, --frameno );
+    }
+    return ial;
+}
+
+void ia_seq_release_input_bufs( ia_seq_t* ias, ia_image_t** ial, uint8_t num )
+{
+    int i = num;
+    while( i-- )
+    {
+        ia_queue_release_from( ias->proc_queue, ial[i]->i_frame );
+    }
+    ia_free( ial );
+}
+*/
 
 /* initialize a new ia_seq */
 ia_seq_t*   ia_seq_open( ia_param_t* p )
@@ -117,47 +166,33 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
-    s->input_queue = ia_queue_open( s->param->i_maxrefs );
+    s->input_queue = ia_queue_open( s->param->i_threads*2 );
     if( s->input_queue == NULL )
         return NULL;
-    s->input_free = ia_queue_open( s->param->i_maxrefs );
+    s->input_free = ia_queue_open( s->param->i_threads*2 );
     if( s->input_free == NULL )
         return NULL;
-    i = s->param->i_maxrefs;
+    i = s->param->i_threads*2;
     while( i-- ) {
-        iaf = ia_malloc( sizeof(ia_image_t) );
+        iaf = ia_image_create( s->param->i_size*3 );
         if( iaf == NULL )
             return NULL;
-        ia_memset( iaf, 0, sizeof(ia_image_t) );
-        iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-        if( iaf->pix == NULL )
-            return NULL;
-        pthread_mutex_init( &iaf->mutex, NULL );
-        ia_pthread_cond_init( &iaf->cond_ro, NULL );
-        ia_pthread_cond_init( &iaf->cond_rw, NULL );
         ia_queue_push( s->input_free, iaf );
     }
 
     /* allocate output buffers */
-    s->output_queue = ia_queue_open( s->param->i_maxrefs*3 );
+    s->output_queue = ia_queue_open( s->param->i_threads );
     if( s->output_queue == NULL )
         return NULL;
-    s->output_free = ia_queue_open( s->param->i_maxrefs*3 );
+    s->output_free = ia_queue_open( s->param->i_threads );
     if( s->output_free == NULL )
         return NULL;
     // fill free queue
-    i = s->param->i_maxrefs*3;
+    i = s->param->i_threads;
     while( i-- ) {
-        iaf = ia_malloc( sizeof(ia_image_t) );
+        iaf = ia_image_create( s->param->i_size*3 );
         if( iaf == NULL )
             return NULL;
-        ia_memset( iaf, 0, sizeof(ia_image_t) );
-        iaf->pix = ia_malloc( sizeof(ia_pixel_t)*s->param->i_size*3 );
-        if( iaf->pix == NULL )
-            return NULL;
-        pthread_mutex_init( &iaf->mutex, NULL );
-        ia_pthread_cond_init( &iaf->cond_ro, NULL );
-        ia_pthread_cond_init( &iaf->cond_rw, NULL );
         ia_queue_push( s->output_free, iaf );
     }
     s->i_frame = 0;
@@ -180,14 +215,10 @@ inline void ia_seq_close( ia_seq_t* s )
     int rc;
 
     rc = ia_pthread_join( s->tio[0], &status );
-    if( rc ) {
-        fprintf( stderr, "ERROR in ia_sq_close1: %d\n", rc );
-    }
+    ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
 
     rc = ia_pthread_join( s->tio[1], &status );
-    if( rc ) {
-        fprintf( stderr, "ERROR in ia_seq_close2: %d\n", rc );
-    }
+    ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
 
     pthread_attr_destroy( &s->attr );
 

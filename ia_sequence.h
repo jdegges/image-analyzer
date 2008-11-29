@@ -19,6 +19,7 @@ typedef struct ia_seq_t
     ia_queue_t*         input_queue;    // input frames
     ia_queue_t*         input_free;
 
+    ia_queue_t*         proc_queue;
     ia_queue_t*         output_queue;   // output queue
     ia_queue_t*         output_free;    // free buffer queue
 
@@ -55,7 +56,7 @@ inline void         ia_seq_close ( ia_seq_t* s );
 inline bool         ia_seq_has_more_input( ia_seq_t* ias, uint64_t pos );
 
 /* get a list of current images */
-ia_image_t**        ia_seq_get_input_bufs( ia_seq_t* ias, uint64_t start, uint8_t size );
+ia_image_t**        ia_seq_get_input_bufs( ia_seq_t* ias, uint8_t num );
 
 /* close input buffers */
 inline void         ia_seq_close_input_bufs( ia_image_t** iab, int8_t size );

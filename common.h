@@ -25,13 +25,15 @@ static const int debug = 0;
  *          if output image -> must be set for system to save data
  * lock   : you must have this lock in order to write to this image
 */
-typedef struct
+typedef struct ia_image_t
 {
-    uint64_t    i_frame;
-    ia_pixel_t* pix;
     char        name[1024];
-    int         users;
-    bool        ready;
+    uint64_t    i_frame;
+    uint32_t    i_refcount;
+    ia_pixel_t* pix;
+    struct ia_image_t* next;
+    struct ia_image_t* last;
+    bool        eoi;
     pthread_mutex_t mutex;
     pthread_cond_t cond_ro;
     pthread_cond_t cond_rw;
@@ -252,9 +254,44 @@ static inline void ia_pthread_error( int rc, char* a, char* b )
 {
     if( rc ) {
         fprintf( stderr, "%s: the call to %s returned error code %d\n", a, b, rc );
-        pthread_exit( NULL );
+        exit( 1 );
+        //pthread_exit( NULL );
     }
 }
+
+ia_image_t* ia_image_create( size_t size );
+void ia_image_free( ia_image_t* iaf );
+
+/*
+inline ia_image_t* ia_image_create( size_t size )
+{
+    ia_image_t* iaf = malloc( sizeof(ia_image_t) );
+    if( iaf == NULL )
+        return NULL;
+    ia_memset( iaf, 0, sizeof(ia_image_t) );
+
+    iaf->pix = malloc( sizeof(ia_pixel_t)*size );
+    if( iaf->pix == NULL )
+        return NULL;
+    ia_memset( iaf->pix, 0, sizeof(ia_pixel_t)*size );
+
+    pthread_mutex_init( &iaf->mutex, NULL );
+    ia_pthread_cond_init( &iaf->cond_ro, NULL );
+    ia_pthread_cond_init( &iaf->cond_rw, NULL );
+
+    return iaf;
+}
+
+static inline void ia_image_free( ia_image_t* iaf )
+{
+    pthread_mutex_destroy( &iaf->mutex );
+    pthread_cond_destroy( &iaf->cond_ro );
+    pthread_cond_destroy( &iaf->cond_rw );
+
+    ia_free( iaf->pix );
+    ia_free( iaf );
+}
+*/
 
 #define ia_error(format, ...) { if(debug) fprintf(stderr,format, ## __VA_ARGS__); }
 

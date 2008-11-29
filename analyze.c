@@ -990,7 +990,7 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
 {
     int j;
     ia_seq_t* ias = ia_seq_open( p );
-    printf("finished ia_seq_open\n");
+    //printf("finished ia_seq_open\n");
 
     if( ias == NULL ) {
         fprintf( stderr, "ERROR: analyze_init(): couldnt open ia_seq\n" );
@@ -1013,7 +1013,7 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
                 break;
         }
     }
-    fprintf( stderr, "finished initializing filters\n" );
+    //fprintf( stderr, "finished initializing filters\n" );
     return ias;
 }
 
@@ -1049,17 +1049,21 @@ void* analyze_exec( void* vptr )
     while( 1 )
     {
         /* wait for input buf (wait for input manager signal) */
+        //iaf = ia_seq_get_input_bufs( ias, iax->ias->param->i_maxrefs );
         iaf = ia_queue_pop( iax->ias->input_queue );
-        if( iaf->users < 0 ) {
+        if( iaf->eoi ) {
             ia_queue_push( iax->ias->input_free, iaf );
             iar = ia_queue_pop( iax->ias->output_free );
-            iar->users = -1;
+            iar->eoi = true;
             ia_queue_push( iax->ias->output_queue, iar );
-            pthread_exit( NULL );
+            break;
         }
 
         /* wait for output buf (wait for output manager signal) */
-        iar = ia_queue_pop( iax->ias->output_free );
+        if( ia_queue_is_empty(iax->ias->output_free) )
+            iar = ia_image_create( iax->ias->param->i_size*3 );
+        else
+            iar = ia_queue_pop( iax->ias->output_free );
 
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0 && no_filter >= 0; j++ )
@@ -1125,33 +1129,31 @@ void* analyze_exec( void* vptr )
             ia_queue_push( iax->ias->input_free, iaf );
 
             /* close output buf (signal manage output) */
-            ia_queue_push( iax->ias->output_queue, iar );
+            if( ia_queue_is_full(iax->ias->output_queue) )
+                ia_queue_shove( iax->ias->output_queue, iar );
+            else
+                ia_queue_push( iax->ias->output_queue, iar );
         }
     }
 
     ia_free( iax );
+    //fprintf( stderr, "exiting from analyze_exit()\n" ); fflush(stderr);
     pthread_exit( NULL );
 }
 
 int analyze( ia_param_t* p )
 {
-    int rc, i, i_maxrefs;
+    int rc, i;
     void* status;
     pthread_t my_threads[MAX_THREADS];
-    pthread_attr_t attr;
-    pthread_attr_init( &attr );
-    pthread_attr_setdetachstate( &attr, PTHREAD_CREATE_JOINABLE );
 
     ia_seq_t* ias = analyze_init( p );
-    printf("finished analyze_init()\n");
     if( ias == NULL ) {
         fprintf( stderr, "ERROR: analyze(): couln't init analyze\n" );
         return 1;
     }
 
-    printf("spawning processing threads...");
-    i_maxrefs = ias->param->i_maxrefs;
-    for( i = 0; i < i_maxrefs; i++ )
+    for( i = 0; i < ias->param->i_threads; i++ )
     {
         ia_exec_t* iax = malloc( sizeof(ia_exec_t) );
         if( iax == NULL )
@@ -1160,33 +1162,21 @@ int analyze( ia_param_t* p )
         iax->bufno = i;
 
         ia_error( "analyze: creating process thread with bufno %d\n", i );
-        rc = ia_pthread_create( &my_threads[i], &attr, &analyze_exec, (void*) iax );
+        rc = ia_pthread_create( &my_threads[i], &ias->attr, &analyze_exec, (void*) iax );
         if( rc ) {
             fprintf( stderr, "analyze(): ia_pthread_create() returned code %d\n", rc );
             return 1;
         }
     }
 
-    printf(" done\nwaiting on processing threads to finish...\n");
-
     while( !ias->iaio->eoi )
         usleep( 100 );
     
-    for( i = 0; i < i_maxrefs; i++ )
+    for( i = 0; i < ias->param->i_threads; i++ )
     {
         rc = pthread_join( my_threads[i], &status );
-//        rc = pthread_cancel( my_threads[i] );
-        if( rc ) {
-            fprintf( stderr, "analyze(): ia_pthread_join() returned code %d\n", rc );
-            return 1;
-        }
-        printf("thread %d finished\n", i );
+        ia_pthread_error( rc, "analyze()", "pthread_join()" );
     }
-
-//    pthread_cancel( ias->tio[0] );
-//    pthread_cancel( ias->tio[1] );
-
-    printf(" done\n");
 
     analyze_deinit( ias );
 
