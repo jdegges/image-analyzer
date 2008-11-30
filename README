@@ -1,0 +1,13 @@
+Required libraries:
+    libsdl
+    libfreeimage
+    libpthread
+
+To install libraries on ubuntu:
+    sudo aptitude install libsdl-dev libfreeimage-dev libpthread-stubs0-dev
+
+Compile:
+    make
+
+Run:
+    ./ia --help
