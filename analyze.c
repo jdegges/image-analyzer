@@ -1055,6 +1055,7 @@ void* analyze_exec( void* vptr )
             ia_queue_push( iax->ias->input_free, iaf );
             iar = ia_queue_pop( iax->ias->output_free );
             iar->eoi = true;
+            iar->i_frame = iaf->i_frame;
             ia_queue_push( iax->ias->output_queue, iar );
             break;
         }
@@ -1064,6 +1065,7 @@ void* analyze_exec( void* vptr )
             iar = ia_image_create( iax->ias->param->i_size*3 );
         else
             iar = ia_queue_pop( iax->ias->output_free );
+        iar->i_frame = iaf->i_frame;
 
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0 && no_filter >= 0; j++ )
@@ -1129,10 +1131,7 @@ void* analyze_exec( void* vptr )
             ia_queue_push( iax->ias->input_free, iaf );
 
             /* close output buf (signal manage output) */
-            if( ia_queue_is_full(iax->ias->output_queue) )
-                ia_queue_shove( iax->ias->output_queue, iar );
-            else
-                ia_queue_push( iax->ias->output_queue, iar );
+            ia_queue_shove( iax->ias->output_queue, iar );
         }
     }
 

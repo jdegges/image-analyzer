@@ -9,6 +9,8 @@
 #include "queue.h"
 #include "common.h"
 
+#define ABS_MAX_SIZE 700
+
 ia_queue_t* ia_queue_open( size_t size )
 {
     ia_queue_t* q = ia_malloc( sizeof(ia_queue_t) );
@@ -61,6 +63,8 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
     }
     assert( q->count < q->size );
 
+    iaf->next = iaf->last = NULL;
+
     // add image to queue
     if( !q->count ) {
         q->tail = iaf;
@@ -89,6 +93,11 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
 void ia_queue_shove( ia_queue_t* q, ia_image_t* iaf )
 {
     int rc;
+
+    if( !ia_queue_is_full(q) || q->size >= ABS_MAX_SIZE ) {
+        ia_queue_push( q, iaf );
+        return;
+    }
 
     // get lock on queue
     rc = ia_pthread_mutex_lock( &q->mutex );
@@ -193,107 +202,3 @@ int ia_queue_is_empty( ia_queue_t* q )
 
     return status;
 }
-
-/*
-void ia_queue_push_to( ia_queue_t* q, ia_image_t* iaf, uint64_t frameno )
-{
-    int rc;
-    size_t pos = frameno % q->size;
-    ia_image_t* iar;
-
-    // get lock pos'th item in queue
-    while( 1 ) {
-        rc = ia_pthread_mutex_lock( &q->list[pos]->mutex );
-        ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_mutex_lock()" );
-        if( q->list[pos]->users != 0 )
-        {
-            rc = ia_pthread_cond_wait( &q->list[pos]->cond_rw, &q->list[pos]->mutex );
-            ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_cond_wait()" );
-        }
-        if( q->list[pos]->users == 0 )
-            break;
-        rc = ia_pthread_mutex_unlock( &q->list[pos]->mutex );
-        ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_mutex_unlock()" );
-        usleep( 5 );
-    }
-    assert( q->list[pos]->users == 0 );
-
-    // add image to queue
-    iar = q->list[pos];
-    q->list[pos] = iaf;
-
-    // increment count
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_mutex_lock()" );
-    q->count++;
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_mutex_unlock()" );
-
-    // if someone is waiting to pop, send signal
-    rc = ia_pthread_cond_signal( &iar->cond_ro );
-    ia_pthread_error( rc, "ia_seq_push_to()", "ia_pthread_cond_signal()" );
-
-    // unlock queue
-    rc = ia_pthread_mutex_unlock( &iar->mutex );
-    ia_pthread_error( rc, "ia_queue_push_to()", "ia_pthread_mutex_unlock()" );
-}
-
-ia_image_t* ia_queue_pop_from( ia_queue_t* q, uint64_t frameno )
-{
-    int rc;
-    size_t pos = frameno % q->size;
-    ia_image_t* iaf;
-
-    // get lock on pos'th item of queue
-    while( 1 ) {
-        rc = ia_pthread_mutex_lock( &q->list[pos]->mutex );
-        ia_pthread_error( rc, "ia_queue_pop_from()", "ia_pthread_mutex_lock()" );
-        if( q->list[pos]->users == 0 || q->list[pos]->i_frame != frameno )
-        {
-            rc = ia_pthread_cond_wait( &q->list[pos]->cond_ro, &q->list[pos]->mutex );
-            ia_pthread_error( rc, "ia_queue_pop_from()", "ia_pthread_cond_wait()" );
-        }
-        if( q->list[pos]->users != 0 && q->list[pos]->i_frame == frameno )
-            break;
-        rc = ia_pthread_mutex_unlock( &q->list[pos]->mutex );
-        ia_pthread_error( rc, "ia_queue_pop_from()", "ia_pthread_mutex_unlock()" );
-        usleep( 5 );
-    }
-    assert( q->list[pos]->users != 0 && q->list[pos]->i_frame == frameno );
-
-    // pop image off queue
-    iaf = q->list[pos];
-    iaf->users++;
-
-    // unlock item
-    rc = ia_pthread_mutex_unlock( &iaf->mutex );
-    ia_pthread_error( rc, "ia_queue_pop_from()", "ia_pthread_mutex_unlock()" );
-
-    return iaf;
-}
-
-void ia_queue_release_from( ia_queue_t* q, uint64_t frameno )
-{
-    int rc;
-    size_t pos = frameno % q->size;
-
-    // get lock on pos'th item of queue
-    rc = ia_pthread_mutex_lock( &q->list[pos]->mutex );
-    ia_pthread_error( rc, "ia_queue_release_from()", "ia_pthread_mutex_lock()" );
-
-    q->list[pos]->users--;
-
-    assert( q->list[pos]->users >= 0 );
-
-    // if someone is waiting to overwrite this entry -> send signal
-    if( !q->list[pos]->users )
-    {
-        rc = ia_pthread_cond_signal( &q->list[pos]->cond_rw );
-        ia_pthread_error( rc, "ia_queue_release_from()", "ia_pthread_cond_signal()" );
-    }
-
-    // unlock pos'th item
-    rc = ia_pthread_mutex_unlock( &q->list[pos]->mutex );
-    ia_pthread_error( rc, "ia_queue_release_from()", "ia_pthread_mutex_unlock()" );
-}
-*/

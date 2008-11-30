@@ -120,7 +120,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"monkey"}
 		};
 
-		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:",long_options,&option_index );
+		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
 		if ( c == -1 )
 			break;
 

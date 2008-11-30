@@ -11,9 +11,7 @@
 #include "iaio.h"
 #include "ia_sequence.h"
 #include "analyze.h"
-
-#define OUTPUT_BUFFER_SIZE 60
-#define INPUT_BUFFER_SIZE 30
+#include "queue.h"
 
 /*
  * ia_seq_manage_input:
@@ -71,16 +69,12 @@ void* ia_seq_manage_output( void* vptr )
         assert( iar != NULL );
         if( iar->eoi ) {
             end--;
-            if( ia_queue_is_full(ias->output_free) )
-                ia_queue_shove( ias->output_free, iar );
-            else
-                ia_queue_push( ias->output_free, iar );
+            ia_queue_shove( ias->output_free, iar );
             if( end == 0 ) {
                 pthread_exit( NULL );
             }
             continue;
         }
-
 
         snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
         if( iaio_outputimage(ias->iaio, iar) )
@@ -90,55 +84,9 @@ void* ia_seq_manage_output( void* vptr )
         }
         i_frame++;
 
-        if( ia_queue_is_full(ias->output_free) )
-            ia_queue_shove( ias->output_free, iar );
-        else
-            ia_queue_push( ias->output_free, iar );
+        ia_queue_shove( ias->output_free, iar );
     }
 }
-
-/*
-ia_image_t** ia_seq_get_input_bufs( ia_seq_t* ias, uint8_t num )
-{
-    int rc, pos = 0;
-    uint64_t frameno;
-    ia_image_t** ial;
-    ia_image_t* iaf;
-    
-    if( num > ias->input_queue->size )
-        return NULL;
-
-    ial = malloc( sizeof(ia_image_t*)*num );
-    if( ial == NULL )
-        return NULL;
-
-    ial[pos] = ia_queue_pop( ias->input_queue );
-    frameno = ial[pos]->i_frame;
-    ia_queue_push_to( ias->proc_queue, ial[pos], frameno );
-
-    if( frameno < ias->input_queue->size )
-    {
-        ia_free( ial[pos] );
-        return NULL;
-    }
-
-    while( --num )
-    {
-        ial[++pos] = ia_queue_pop_from( ias->proc_queue, --frameno );
-    }
-    return ial;
-}
-
-void ia_seq_release_input_bufs( ia_seq_t* ias, ia_image_t** ial, uint8_t num )
-{
-    int i = num;
-    while( i-- )
-    {
-        ia_queue_release_from( ias->proc_queue, ial[i]->i_frame );
-    }
-    ia_free( ial );
-}
-*/
 
 /* initialize a new ia_seq */
 ia_seq_t*   ia_seq_open( ia_param_t* p )
