@@ -3,22 +3,6 @@
 
 #include "image_analyzer.h"
 
-/* FILTER Indexes */
-#define SAD     1
-#define DERIV   2
-#define FLOW    3
-#define CURV    4
-#define SSD     5
-#define ME      6
-#define BLOBS   7
-#define DIFF    8
-#define BHATTA  9
-#define COPY    10
-#define MBOX    11
-#define MONKEY  12
-
-ia_bhatta_t b;
-
 int     analyze( ia_param_t* p );
 
 /*

@@ -65,10 +65,4 @@ typedef struct
 
 } ia_param_t;
 
-typedef struct
-{
-    unsigned int**** bg_hist;
-    unsigned int***  pixel_hist;
-} ia_bhatta_t;
-
 #endif
