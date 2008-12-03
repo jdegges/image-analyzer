@@ -28,19 +28,19 @@ void* ia_seq_manage_input( void* vptr )
     /* while there is more input */
     for( ;; ) {
         iaf = ia_queue_pop( ias->input_free );
+        iaf->i_frame = i_frame;
         
         /* capture new frame, if error/eof -> exit */
-        if( i_frame > 200 || iaio_getimage(ias->iaio, iaf) )
+        if( (ias->param->i_vframes && i_frame > ias->param->i_vframes) || iaio_getimage(ias->iaio, iaf) )
         {
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
-            iaf->eoi = true;
+            ia_queue_push( ias->input_free, iaf );
             while( i_threads-- ) {
-                ia_queue_push( ias->input_queue, iaf );
                 iaf = ia_queue_pop( ias->input_free );
                 iaf->eoi = true;
+                ia_queue_push( ias->input_queue, iaf );
             }
-            ia_queue_push( ias->input_queue, iaf );
             pthread_exit( NULL );
         }
         snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
@@ -79,12 +79,15 @@ void* ia_seq_manage_output( void* vptr )
         snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
         if( iaio_outputimage(ias->iaio, iar) )
         {
-            fprintf( stderr, "unable to save image\n" );
+            fprintf( stderr, "ERROR: Unable to save image to %s\n", iar->name );
             pthread_exit( NULL );
         }
         i_frame++;
 
-        ia_queue_shove( ias->output_free, iar );
+        if( ias->iaio->eoi )
+            ia_image_free( iar );
+        else
+            ia_queue_shove( ias->output_free, iar );
     }
 }
 

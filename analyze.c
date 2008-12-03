@@ -1052,10 +1052,7 @@ void* analyze_exec( void* vptr )
         //iaf = ia_seq_get_input_bufs( ias, iax->ias->param->i_maxrefs );
         iaf = ia_queue_pop( iax->ias->input_queue );
         if( iaf->eoi ) {
-            ia_queue_push( iax->ias->input_free, iaf );
-            iar = ia_queue_pop( iax->ias->output_free );
-            iar->eoi = true;
-            iar->i_frame = iaf->i_frame;
+            iar = iaf;
             ia_queue_push( iax->ias->output_queue, iar );
             break;
         }
@@ -1136,7 +1133,6 @@ void* analyze_exec( void* vptr )
     }
 
     ia_free( iax );
-    //fprintf( stderr, "exiting from analyze_exit()\n" ); fflush(stderr);
     pthread_exit( NULL );
 }
 

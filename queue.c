@@ -9,7 +9,7 @@
 #include "queue.h"
 #include "common.h"
 
-#define ABS_MAX_SIZE 700
+#define ABS_MAX_SIZE 60
 
 ia_queue_t* ia_queue_open( size_t size )
 {
@@ -42,9 +42,13 @@ void ia_queue_close( ia_queue_t* q )
 }
 
 /* adds image to queue */
-void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
+int _ia_queue_push( ia_queue_t* q, ia_image_t* iaf, ia_queue_pushtype_t pt )
 {
     int rc;
+
+    if( (pt == QUEUE_TAP && ia_queue_is_full(q))
+        || (pt == QUEUE_TAP && q->size >= ABS_MAX_SIZE) )
+        return 1;
 
     // get lock on queue
     while( 1 ) {
@@ -52,6 +56,10 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
         ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
         if( q->count >= q->size )
         {
+            if( pt == QUEUE_SHOVE ) {
+                q->size++;
+                break;
+            }
             rc = ia_pthread_cond_wait( &q->cond_rw, &q->mutex );
             ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
         }
@@ -63,16 +71,13 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
     }
     assert( q->count < q->size );
 
-    iaf->next = iaf->last = NULL;
+    iaf->last =
+    iaf->next = NULL;
 
     // add image to queue
     if( !q->count ) {
-        q->tail = iaf;
-    } else if ( q->count == 1 ) {
+        q->tail =
         q->head = iaf;
-        q->head->next = NULL;
-        q->head->last = q->tail;
-        q->tail->next = q->head;
     } else {
         iaf->next = NULL;
         iaf->last = q->head;
@@ -88,48 +93,23 @@ void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
     // unlock queue
     rc = ia_pthread_mutex_unlock( &q->mutex );
     ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
+
+    return 0;
 }
 
-void ia_queue_shove( ia_queue_t* q, ia_image_t* iaf )
+int ia_queue_tap( ia_queue_t* q, ia_image_t* iaf )
 {
-    int rc;
+    return _ia_queue_push( q, iaf, QUEUE_TAP );
+}
 
-    if( !ia_queue_is_full(q) || q->size >= ABS_MAX_SIZE ) {
-        ia_queue_push( q, iaf );
-        return;
-    }
+void ia_queue_push( ia_queue_t* q, ia_image_t* iaf )
+{
+    _ia_queue_push( q, iaf, QUEUE_PUSH );
+}
 
-    // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
-
-    if( q->count >= q->size )
-        q->size++;
-    assert( q->count < q->size );
-
-    // add image to queue
-    if( !q->count ) {
-        q->tail = iaf;
-    } else if ( q->count == 1 ) {
-        q->head = iaf;
-        q->head->next = NULL;
-        q->head->last = q->tail;
-        q->tail->next = q->head;
-    } else {
-        iaf->next = NULL;
-        iaf->last = q->head;
-        q->head->next = iaf;
-        q->head = iaf;
-    }
-    q->count++;
-
-    // if someone is waiting to pop, send signal
-    rc = ia_pthread_cond_signal( &q->cond_ro );
-    ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_signal()" );
-
-    // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
+int ia_queue_shove( ia_queue_t* q, ia_image_t* iaf )
+{
+    return _ia_queue_push( q, iaf, QUEUE_SHOVE );
 }
 
 /* returns unlocked image from queue */
