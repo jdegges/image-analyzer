@@ -84,6 +84,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     p->b_vdev = 1;
     p->display = 0;
     p->i_threads = 1;
+    p->i_vframes = 0;
 
 	for ( ;; )
 	{
@@ -103,6 +104,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"refs"         ,1,0,0},
             {"ext"          ,1,0,0},
             {"threads"      ,1,0,0},
+            {"vframes"      ,1,0,0},
 			{0              ,0,0,0}
 		};
 		char filters[][15] = {
@@ -124,80 +126,61 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		if ( c == -1 )
 			break;
 
-		if ( (option_index == 0 && c == 0) || (option_index == 0 && c == 'i') )
+		if( (option_index == 0 && c == 0) || (option_index == 0 && c == 'i') )
 		{
-            strncpy( p->input_file,optarg,1024 );
+            strncpy( p->input_file, optarg, 1024 );
             p->b_vdev = 0;
 		}
-		else if ( (option_index == 1 && c == 0) || (option_index == 0 && c == 'o') )
-		{
-			strncpy ( p->output_directory,optarg,1024 );
-		}
-		else if ( (option_index == 2 && c == 0 ) || (option_index == 0 && c == 'f') )
+		else if( (option_index == 1 && c == 0) || (option_index == 0 && c == 'o') )
+			strncpy ( p->output_directory, optarg, 1024 );
+		else if( (option_index == 2 && c == 0 ) || (option_index == 0 && c == 'f') )
 		{
 			fltr = NULL;
 			fltr = strtok ( optarg,"," );
-			for ( c = 0; c < 15 && fltr != NULL; c++ )
+			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
-				for ( i = 0; i < 12; i++ )
+				for( i = 0; i < 12; i++ )
 				{
-					if ( strcmp(fltr,filters[i]) == 0 )
+					if( strcmp(fltr,filters[i]) == 0 )
 						break;
 				}
-				if ( i >= 12 )
+				if( i >= 12 )
 				{
-					fprintf ( stderr,"Unknown filter %s\n",fltr );
-					usage ();
+					fprintf( stderr,"Unknown filter %s\n",fltr );
+					usage();
 					return 1;
 				}
 				p->filter[c] = i+1;
-				fltr = strtok ( NULL,"," );
+				fltr = strtok( NULL, "," );
 			}
 		}
-		else if ( (option_index == 3 && c == 0) || (option_index == 0 && c == 'b') )
-		{
-            p->i_mb_size = strtoul( optarg,NULL,10 );
-		}
-		else if ( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
-		{
+		else if( (option_index == 3 && c == 0) || (option_index == 0 && c == 'b') )
+            p->i_mb_size = strtoul( optarg, NULL, 10 );
+		else if( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
             p->display = 1;
-		}
-		else if ( (option_index == 5 && c == 0) || (option_index == 0 && c == 's') )
+		else if( (option_index == 5 && c == 0) || (option_index == 0 && c == 's') )
+            ;
+		else if( option_index == 6 && c == 0 )
 		{
-		}
-		else if ( option_index == 6 && c == 0 )
-		{
-			usage ();
+			usage();
 			return 1;
 		}
-        else if ( (option_index == 7 && c == 0) || (option_index == 0 && c == 'w') )
-        {
-            p->i_width = strtoul( optarg,NULL,10 );
-        }
-        else if ( (option_index == 8 && c == 0) || (option_index == 0 && c == 'h') )
-        {
-            p->i_height = strtoul( optarg,NULL,10 );
-        }
-        else if ( (option_index == 9 && c == 0) || (option_index == 0 && c == 'v') )
-        {
+        else if( (option_index == 7 && c == 0) || (option_index == 0 && c == 'w') )
+            p->i_width = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 8 && c == 0) || (option_index == 0 && c == 'h') )
+            p->i_height = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 9 && c == 0) || (option_index == 0 && c == 'v') )
             p->b_verbose = 1;
-        }
-        else if ( (option_index == 10 && c == 0) || (option_index == 0 && c == 'd') )
-        {
-            strncpy( p->video_device,optarg,1024 );
-        }
-        else if ( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
-        {
-            p->i_maxrefs = strtoul( optarg,NULL,10 );
-        }
-        else if ( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )
-        {
-            strncpy( p->ext,optarg,10 );
-        }
-        else if ( (option_index == 13 && c == 0) || (option_index == 0 && c == 't') )
-        {
-            p->i_threads = strtoul( optarg,NULL,10 );
-        }
+        else if( (option_index == 10 && c == 0) || (option_index == 0 && c == 'd') )
+            strncpy( p->video_device, optarg, 1024 );
+        else if( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
+            p->i_maxrefs = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )
+            strncpy( p->ext, optarg, 10 );
+        else if( (option_index == 13 && c == 0) || (option_index == 0 && c == 't') )
+            p->i_threads = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 14 && c == 0))
+            p->i_vframes = strtoul( optarg, NULL, 10 );
 		else
 		{
 			fprintf ( stderr,"Unrecognized option -%c\n",c );
@@ -237,6 +220,7 @@ void usage ( void )
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
     printf ( "  -b, --mb-size <int>             Macroblock size to use in filters that use macroblocks [15]\n" );
     printf ( "\n" );
+    printf ( "  --vframes <int>                 The number of frames to process\n" );
     printf ( "  -t, --threads <int>             Parallel processing\n" );
 	printf ( "  -s, --stats                     Calculates and prints statistics [not available]\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );

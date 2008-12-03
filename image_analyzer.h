@@ -20,6 +20,7 @@ typedef struct
     int b_verbose;
     int b_vdev;     // true if capturing from video device
     int display;
+    uint64_t i_vframes;
 
     /* bgsub code params */
     struct {
