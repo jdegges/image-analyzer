@@ -28,18 +28,22 @@
 #define MONKEY  12
 
 
-static inline int offset( int w, int x, int y, int c )
+static inline int offset( int w, int x, int y, int p )
 {
-    return w*3*y + x*3+c;
+    return w*3*y + x*3+p;
 }
 
 #define O( y,x ) (s->param->i_width*3*y + x*3)
 
+
+/* Import filters */
 #include "filters/copy.h"
 #include "filters/curvature.h"
 #include "filters/draw_best_box.h"
 #include "filters/first_derivative.h"
 
+
+/* Set up the filter function pointers */
 typedef void (*init_funcs)(ia_seq_t*);
 typedef void (*exec_funcs)(ia_seq_t*, ia_image_t**, ia_image_t*);
 typedef void (*clos_funcs)(void);
@@ -96,6 +100,5 @@ void init_filters( void )
     filters.filters_clos[MBOX]      = NULL;
     filters.filters_clos[MONKEY]    = NULL;
 }
-
 
 #endif
