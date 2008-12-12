@@ -31,7 +31,7 @@
 #include "queue.h"
 #include "common.h"
 
-#define ABS_MAX_SIZE 60
+#define ABS_MAX_SIZE 30
 
 ia_queue_t* ia_queue_open( size_t size )
 {
@@ -73,23 +73,15 @@ int _ia_queue_push( ia_queue_t* q, ia_image_t* iaf, ia_queue_pushtype_t pt )
         return 1;
 
     // get lock on queue
-    while( 1 ) {
-        rc = ia_pthread_mutex_lock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
-        if( q->count >= q->size )
-        {
-            if( pt == QUEUE_SHOVE ) {
-                q->size++;
-                break;
-            }
-            rc = ia_pthread_cond_wait( &q->cond_rw, &q->mutex );
-            ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
-        }
-        if( q->count < q->size )
+    rc = ia_pthread_mutex_lock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
+    while( q->count >= q->size ) {
+        if( pt == QUEUE_SHOVE ) {
+            q->size++;
             break;
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
-        usleep( 5 );
+        }
+        rc = ia_pthread_cond_wait( &q->cond_rw, &q->mutex );
+        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
     }
     assert( q->count < q->size );
 
@@ -141,24 +133,15 @@ ia_image_t* ia_queue_pop( ia_queue_t* q )
     ia_image_t* iaf;
 
     // get lock on queue
-    while( 1 ) {
-        rc = ia_pthread_mutex_lock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
-        if( q->count == 0 )
-        {
-            rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
-            ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
-        }
-        if( q->count > 0 )
-            break;
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
-        usleep( 5 );
+    rc = ia_pthread_mutex_lock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
+    while( q->count == 0 ) {
+        rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
     }
     assert( q->count > 0 );
 
     // pop image off queue
-    //fprintf( stderr, "count %llu\niaf %p\ntail %p\ntail next p\n", q->count, (void*)iaf, (void*)q->tail ); // (void*)q->tail->next );
     iaf = q->tail;
     q->tail = q->tail->next;
 
@@ -171,6 +154,71 @@ ia_image_t* ia_queue_pop( ia_queue_t* q )
     // unlock queue
     rc = ia_pthread_mutex_unlock( &q->mutex );
     ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
+
+    return iaf;
+}
+
+/* returns unlocked image from queue */
+ia_image_t* ia_queue_pop_frame( ia_queue_t* q, uint64_t frameno )
+{
+    int rc;
+    ia_image_t* iaf;
+
+    // get lock on queue
+    rc = ia_pthread_mutex_lock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_lock()" );
+    while( q->count == 0 ) {
+        rc = ia_pthread_cond_wait( &q->cond_ro, &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_wait()" );
+    }
+    assert( q->count > 0 );
+
+    // pop image off queue
+    iaf = q->tail;
+    while( iaf != NULL ) {
+        if( iaf->i_frame == frameno )
+            break;
+        iaf = iaf->next;
+    }
+
+    // if frame wasnt on list -> return null
+    if( iaf == NULL ) {
+        rc = ia_pthread_mutex_unlock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
+
+        return NULL;
+    }
+
+    // remove from list
+    if( iaf == q->tail && iaf == q->head ) {
+        q->tail =
+        q->head = NULL;
+    } else if( iaf == q->tail ) {
+        q->tail = iaf->next;
+        q->tail->last = NULL;
+        if( q->tail == q->head )
+            q->tail->next = NULL;
+    } else if( iaf == q->head ) {
+        q->head = iaf->last;
+        q->head->next = NULL;
+        if( q->tail == q->head )
+            q->head->last = NULL;
+    } else {
+        iaf->last->next = iaf->next;
+        iaf->next->last = iaf->last;
+    }
+
+    iaf->last =
+    iaf->next = NULL;
+    q->count--;
+
+    // if someone is waiting to push, send signal
+    rc = ia_pthread_cond_signal( &q->cond_rw );
+    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
+
+    // unlock queue
+    rc = ia_pthread_mutex_unlock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
 
     return iaf;
 }

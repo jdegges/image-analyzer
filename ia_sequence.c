@@ -25,8 +25,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include <assert.h>
-//#include <stdlib.h>
-//#include <string.h>
 
 #include <FreeImage.h>
 #include "common.h"
@@ -61,6 +59,7 @@ void* ia_seq_manage_input( void* vptr )
             while( i_threads-- ) {
                 iaf = ia_queue_pop( ias->input_free );
                 iaf->eoi = true;
+                iaf->i_frame = i_frame++;
                 ia_queue_push( ias->input_queue, iaf );
             }
             pthread_exit( NULL );
@@ -87,14 +86,19 @@ void* ia_seq_manage_output( void* vptr )
 
     /* while there is more output */
     for( ;; ) {
-        iar = ia_queue_pop( ias->output_queue );
-        assert( iar != NULL );
+        iar = ia_queue_pop_frame( ias->output_queue, i_frame );
+        if( iar == NULL ) {
+            usleep ( 30 );
+            continue;
+        }
+
         if( iar->eoi ) {
             end--;
             ia_queue_shove( ias->output_free, iar );
             if( end == 0 ) {
                 pthread_exit( NULL );
             }
+            i_frame++;
             continue;
         }
 

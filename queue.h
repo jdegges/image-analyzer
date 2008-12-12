@@ -49,6 +49,7 @@ int ia_queue_tap( ia_queue_t* q, ia_image_t* iaf );
 void ia_queue_push( ia_queue_t* q, ia_image_t* iaf );
 int ia_queue_shove( ia_queue_t* q, ia_image_t* iaf );
 ia_image_t* ia_queue_pop( ia_queue_t* q );
+ia_image_t* ia_queue_pop_frame( ia_queue_t* q, uint64_t frameno );
 int ia_queue_is_full( ia_queue_t* q );
 int ia_queue_is_empty( ia_queue_t* q );
 
