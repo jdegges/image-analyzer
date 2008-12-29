@@ -46,8 +46,12 @@ void* ia_seq_manage_input( void* vptr )
     uint64_t i_frame = 0;
 
     /* while there is more input */
-    for( ;; ) {
-        iaf = ia_queue_pop( ias->input_free );
+    for( ;; )
+    {
+        if( ias->input_free->count + ias->input_queue->count < 2 )
+            iaf = ia_image_create( ias->param->i_size*3 );
+        else
+            iaf = ia_queue_pop( ias->input_free );
         iaf->i_frame = i_frame;
         
         /* capture new frame, if error/eof -> exit */
@@ -56,8 +60,12 @@ void* ia_seq_manage_input( void* vptr )
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
             ia_queue_push( ias->input_free, iaf );
-            while( i_threads-- ) {
-                iaf = ia_queue_pop( ias->input_free );
+            while( i_threads-- )
+            {
+                if( ia_queue_is_empty(ias->input_free) )
+                    iaf = ia_image_create( 1 );
+                else
+                    iaf = ia_queue_pop( ias->input_free );
                 iaf->eoi = true;
                 iaf->i_frame = i_frame++;
                 ia_queue_push( ias->input_queue, iaf );
@@ -81,23 +89,25 @@ void* ia_seq_manage_output( void* vptr )
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iar;
     uint64_t i_threads = ias->param->i_threads;
-    uint64_t i_frame = 0;
+    uint64_t i_frame = (uint32_t) ias->param->i_maxrefs;
     int end = i_threads;
 
     /* while there is more output */
-    for( ;; ) {
+    for( ;; )
+    {
         iar = ia_queue_pop_frame( ias->output_queue, i_frame );
-        if( iar == NULL ) {
-            usleep ( 30 );
+        if( iar == NULL )
+        {
+            usleep ( 50 );
             continue;
         }
 
-        if( iar->eoi ) {
+        if( iar->eoi )
+        {
             end--;
             ia_queue_shove( ias->output_free, iar );
-            if( end == 0 ) {
+            if( end == 0 )
                 pthread_exit( NULL );
-            }
             i_frame++;
             continue;
         }
@@ -143,14 +153,15 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
-    s->input_queue = ia_queue_open( s->param->i_threads*2 );
+    s->input_queue = ia_queue_open( 2 );
     if( s->input_queue == NULL )
         return NULL;
-    s->input_free = ia_queue_open( s->param->i_threads*2 );
+    s->input_free = ia_queue_open( 2 );
     if( s->input_free == NULL )
         return NULL;
-    i = s->param->i_threads*2;
-    while( i-- ) {
+    // fill free queue
+    for( i = 2; i--; )
+    {
         iaf = ia_image_create( s->param->i_size*3 );
         if( iaf == NULL )
             return NULL;
@@ -158,21 +169,25 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     }
 
     /* allocate output buffers */
-    s->output_queue = ia_queue_open( s->param->i_threads );
+    s->output_queue = ia_queue_open( s->param->i_threads+1 );
     if( s->output_queue == NULL )
         return NULL;
-    s->output_free = ia_queue_open( s->param->i_threads );
+    s->output_free = ia_queue_open( s->param->i_threads+1 );
     if( s->output_free == NULL )
         return NULL;
     // fill free queue
-    i = s->param->i_threads;
-    while( i-- ) {
+    for( i = s->param->i_threads+1; i--; )
+    {
         iaf = ia_image_create( s->param->i_size*3 );
         if( iaf == NULL )
             return NULL;
         ia_queue_push( s->output_free, iaf );
     }
     s->i_frame = 0;
+
+    /* allocate proess bufs */
+    s->proc_queue = ia_queue_open( s->param->i_maxrefs+1 );
+    assert( s->proc_queue );
 
     pthread_attr_init( &s->attr );
     pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
@@ -205,6 +220,7 @@ inline void ia_seq_close( ia_seq_t* s )
     ia_queue_close( s->output_queue );
     ia_queue_close( s->input_free );
     ia_queue_close( s->input_queue );
+    ia_queue_close( s->proc_queue);
 
     ia_free( s );
 }

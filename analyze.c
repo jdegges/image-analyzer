@@ -249,14 +249,14 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
         return NULL;
     }
 
+    init_filters();
+
     /* call any init functions */
     for ( j = 0; p->filter[j] != 0; j++ )
     {
         if( filters.filters_init[p->filter[j]] )
             filters.filters_init[p->filter[j]]( ias );
     }
-
-    init_filters();
 
     return ias;
 }
@@ -277,17 +277,43 @@ static inline void analyze_deinit( ia_seq_t* s )
 
 void* analyze_exec( void* vptr )
 {
-    int j, no_filter = 0;
+    int no_filter = 0;
     ia_exec_t* iax = (ia_exec_t*) vptr;
-    ia_image_t *iaf, *iar;
+    const int i_maxrefs = iax->ias->param->i_maxrefs;
+    ia_image_t** iaim = malloc( sizeof(ia_image_t*)*i_maxrefs );
+
+    if( !iaim )
+        pthread_exit( NULL );
+
     while( 1 )
     {
+        ia_image_t *iaf, *iar;
+        int i, j;
+        uint64_t current_frame;
+
         /* wait for input buf (wait for input manager signal) */
         iaf = ia_queue_pop( iax->ias->input_queue );
-        if( iaf->eoi ) {
-            iar = iaf;
-            ia_queue_push( iax->ias->output_queue, iar );
+        if( iaf->eoi )
+        {
+            ia_queue_shove( iax->ias->output_queue, iaf );
             break;
+        }
+
+        current_frame = iaf->i_frame;
+        ia_queue_shove_sorted( iax->ias->proc_queue, iaf );
+
+        if( current_frame < (uint32_t) i_maxrefs )
+            continue;
+
+        for( i = i_maxrefs-1, j = 0; i >= 0; i--, j++ )
+        {
+            for( ;; )
+            {
+                iaim[i] = ia_queue_pek( iax->ias->proc_queue, current_frame-j );
+                if( iaim[i] )
+                    break;
+                usleep( 50 );
+            }
         }
 
         /* wait for output buf (wait for output manager signal) */
@@ -295,36 +321,39 @@ void* analyze_exec( void* vptr )
             iar = ia_image_create( iax->ias->param->i_size*3 );
         else
             iar = ia_queue_pop( iax->ias->output_free );
-        iar->i_frame = iaf->i_frame;
+        iar->i_frame = current_frame;
 
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0 && no_filter >= 0; j++ )
         {
-            if( filters.filters_exec[iax->ias->param->filter[j]] != NULL ) {
-                filters.filters_exec[iax->ias->param->filter[j]]( iax->ias, &iaf, iar );
-            } else {
+            if( filters.filters_exec[iax->ias->param->filter[j]] != NULL )
+                filters.filters_exec[iax->ias->param->filter[j]]( iax->ias, iaim, iar );
+            else
                 no_filter++;
-            }
         }
 
         /* clean up buffers and register output jobs */
         if( no_filter == j || no_filter == -1 )
         {
             no_filter = -1;
-            ia_queue_push( iax->ias->output_queue, iaf );
+            ia_queue_push_sorted( iax->ias->output_queue, iaim[i_maxrefs-1] );
+            for( i = 0; i < i_maxrefs-1; i++ )
+                ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i] );
             ia_queue_push( iax->ias->input_free, iar );
         }
         else
         {
             no_filter = 0;
             /* close input buf (signal manage input) */
-            ia_queue_push( iax->ias->input_free, iaf );
+            for( i = 0; i < i_maxrefs; i++ )
+                ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i] );
 
             /* close output buf (signal manage output) */
-            ia_queue_shove( iax->ias->output_queue, iar );
+            ia_queue_push_sorted( iax->ias->output_queue, iar );
         }
     }
 
+    ia_free( iaim );
     ia_free( iax );
     pthread_exit( NULL );
 }

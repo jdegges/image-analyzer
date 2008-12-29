@@ -51,7 +51,7 @@ typedef struct ia_image_t
 {
     char        name[1024];
     uint64_t    i_frame;
-    uint32_t    i_refcount;
+    int32_t     i_refcount;
     ia_pixel_t* pix;
     struct ia_image_t* next;
     struct ia_image_t* last;
