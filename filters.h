@@ -63,7 +63,7 @@ static inline int offset( int w, int x, int y, int p )
 #include "filters/curvature.h"
 #include "filters/draw_best_box.h"
 #include "filters/first_derivative.h"
-
+#include "filters/flow.h"
 
 /* Set up the filter function pointers */
 typedef void (*init_funcs)(ia_seq_t*);
@@ -97,7 +97,7 @@ void init_filters( void )
 
     filters.filters_exec[SAD]       = NULL;
     filters.filters_exec[DERIV]     = &fstderiv;
-    filters.filters_exec[FLOW]      = NULL;
+    filters.filters_exec[FLOW]      = &flow;
     filters.filters_exec[CURV]      = &curvature;
     filters.filters_exec[SSD]       = NULL;
     filters.filters_exec[ME]        = NULL;
