@@ -245,7 +245,7 @@ ia_image_t* ia_queue_pek( ia_queue_t* q, uint64_t frameno )
     return iaf;
 }
 
-void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, ia_image_t* iaf )
+void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, ia_image_t* iaf, int i_maxrefs )
 {
     int rc;
     ia_image_t *min, *max;
@@ -272,8 +272,9 @@ void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, ia_image_t* iaf )
         iaf = iaf->next;
     }
 
-    if( max != NULL && min != NULL && max != min
-        && max->i_frame - min->i_frame > 4
+    if( max != NULL && min != NULL
+        && (max->i_frame - min->i_frame > (uint32_t) i_maxrefs
+            || i_maxrefs == 1)
         && min->i_refcount <= 0 ) {
         // unlock queue
         rc = ia_pthread_mutex_unlock( &q->mutex );

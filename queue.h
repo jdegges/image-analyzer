@@ -54,7 +54,7 @@ int ia_queue_push_sorted( ia_queue_t* q, ia_image_t* iaf );
 int ia_queue_shove_sorted( ia_queue_t* q, ia_image_t* iaf );
 ia_image_t* ia_queue_pop( ia_queue_t* q );
 ia_image_t* ia_queue_pek( ia_queue_t* q, uint64_t frameno );
-void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, ia_image_t* iaf );
+void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, ia_image_t* iaf, int i_maxrefs );
 ia_image_t* ia_queue_pop_frame( ia_queue_t* q, uint64_t frameno );
 int ia_queue_is_full( ia_queue_t* q );
 int ia_queue_is_empty( ia_queue_t* q );
