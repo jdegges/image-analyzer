@@ -332,25 +332,18 @@ void* analyze_exec( void* vptr )
                 no_filter++;
         }
 
-        /* clean up buffers and register output jobs */
+        /* mark the no filter flag if no filters were specified */
         if( no_filter == j || no_filter == -1 )
-        {
             no_filter = -1;
-            ia_queue_push_sorted( iax->ias->output_queue, iaim[i_maxrefs-1] );
-            for( i = 0; i < i_maxrefs-1; i++ )
-                ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i] );
-            ia_queue_push( iax->ias->input_free, iar );
-        }
         else
-        {
             no_filter = 0;
-            /* close input buf (signal manage input) */
-            for( i = 0; i < i_maxrefs; i++ )
-                ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i] );
 
-            /* close output buf (signal manage output) */
-            ia_queue_push_sorted( iax->ias->output_queue, iar );
-        }
+        /* close input buf (signal manage input) */
+        for( i = 0; i < i_maxrefs; i++ )
+            ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i], i_maxrefs );
+
+        /* close output buf (signal manage output) */
+        ia_queue_shove_sorted( iax->ias->output_queue, iar );
     }
 
     ia_free( iaim );
