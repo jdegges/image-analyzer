@@ -23,16 +23,12 @@
 #ifndef _H_SAD
 #define _H_SAD
 
-static inline void sad( ia_seq_t* s )
+static inline void sad( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
 {
     int i, j, h, k;
     const double op = 1.0 / (s->param->i_mb_size*s->param->i_mb_size);
 
-    if( s->i_nrefs < 1 )
-    {
-        ia_memset( s->iar->pix,0,sizeof(ia_pixel_t)*s->param->i_size*3 );
-        return;
-    }
+    assert( s->param->i_maxrefs > 1 );
 
     for( i = 0; i < s->param->i_height; i++ )
     {
@@ -42,9 +38,9 @@ static inline void sad( ia_seq_t* s )
             const int cg = cr + 1;
             const int cb = cg + 1;
 
-            s->iar->pix[cr] =
-            s->iar->pix[cg] =
-            s->iar->pix[cb] = 0;
+            iar->pix[cr] =
+            iar->pix[cg] =
+            iar->pix[cb] = 0;
 
             if( i <= s->param->i_mb_size/2 || j <= s->param->i_mb_size/2
                 || i >= s->param->i_height - s->param->i_mb_size/2
@@ -61,15 +57,15 @@ static inline void sad( ia_seq_t* s )
                     const int lg = lr + 1;
                     const int lb = lg + 1;
 
-                    s->iar->pix[cr] += fabs(s->iaf->pix[lr] - s->ref[0]->pix[lr]);
-                    s->iar->pix[cg] += fabs(s->iaf->pix[lg] - s->ref[0]->pix[lg]);
-                    s->iar->pix[cb] += fabs(s->iaf->pix[lb] - s->ref[0]->pix[lb]);
+                    iar->pix[cr] += fabs(iaim[0]->pix[lr] - iaim[1]->pix[lr]);
+                    iar->pix[cg] += fabs(iaim[0]->pix[lg] - iaim[1]->pix[lg]);
+                    iar->pix[cb] += fabs(iaim[0]->pix[lb] - iaim[1]->pix[lb]);
                 }
             }
 
-            s->iar->pix[cr] *= op; //clip_uint8( s->iar->pix[cr] ); //op;
-            s->iar->pix[cg] *= op; //clip_uint8( s->iar->pix[cg] ); //op;
-            s->iar->pix[cb] *= op; //clip_uint8( s->iar->pix[cb] ); //op;
+            iar->pix[cr] *= op; //clip_uint8( s->iar->pix[cr] ); //op;
+            iar->pix[cg] *= op; //clip_uint8( s->iar->pix[cg] ); //op;
+            iar->pix[cb] *= op; //clip_uint8( s->iar->pix[cb] ); //op;
         }
     }
 }
