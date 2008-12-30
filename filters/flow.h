@@ -31,6 +31,8 @@ static inline void flow( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
     lmin = -255*9;
     op = 255.0 / (255*9*2);  //  = max / (lmax - lmin)
 
+    assert( s->param->i_maxrefs > 2 );
+
     for ( i = 0; i < s->param->i_height; i++ )
     {
         int j;
