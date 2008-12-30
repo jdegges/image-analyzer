@@ -23,36 +23,30 @@
 #ifndef _H_MONKEY
 #define _H_MONKEY
 
-void monkey( ia_seq_t* s )
+static inline void monkey( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
 {
     int i,j;
-    ia_pixel_t dev, avg;
-
-    if( s->i_nrefs < s->param->i_maxrefs )
-    {
-        ia_memset( s->iar->pix,0,sizeof(ia_pixel_t)*s->param->i_size*3 );
-        return;
-    }
+    double dev, avg;
 
     i = s->param->i_size*3-1;
     while( i-- )
     {
-        avg = s->iaf->pix[i];
-        j = s->i_nrefs-1;
+        avg = 0;
+        j = s->param->i_maxrefs;
         while( j-- )
-            avg += s->ref[j]->pix[i];
+            avg += iaim[j]->pix[i];
 
-        avg /= ( s->i_nrefs + 1 );
+        avg /= s->param->i_maxrefs;
 
-        dev = ia_abs( avg - s->iaf->pix[i] );
-        s->iar->pix[i] = s->iaf->pix[i];
-        j = s->i_nrefs-1;
+        dev = 0;
+        iar->pix[i] = iaim[s->param->i_maxrefs-1]->pix[i];
+        j = s->param->i_maxrefs;
         while( j-- )
         {
-            if( ia_abs(avg-s->ref[j]->pix[i]) > dev )
+            if( ia_abs(avg-iaim[j]->pix[i]) > dev )
             {
-                dev = ia_abs(avg-s->ref[j]->pix[i]);
-                s->iar->pix[i] = s->ref[j]->pix[i];
+                dev = ia_abs(avg-iaim[j]->pix[i]);
+                iar->pix[i] = iaim[j]->pix[i];
             }
         }
     }
