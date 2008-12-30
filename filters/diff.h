@@ -23,18 +23,14 @@
 #ifndef _H_DIFF
 #define _H_DIFF
 
-void diff( ia_seq_t* s )
+static inline void diff( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
 {
     int i;
 
-    if( s->i_nrefs == 0 )
-    {
-        ia_memset( s->iar->pix,0,sizeof(ia_pixel_t)*s->param->i_size*3 );
-        return;
-    }
+    assert( s->param->i_maxrefs > 1 );
     
     for(i = 0; i < s->param->i_size*3; i++)
-        s->iar->pix[i] = fabs( s->iaf->pix[i] - s->ref[0]->pix[i] );
+        iar->pix[i] = fabs( iaim[0]->pix[i] - iaim[1]->pix[i] );
 }
 
 #endif
