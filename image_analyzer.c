@@ -141,7 +141,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"bhatta"},
             {"copy"},
             {"mbox"},
-            {"monkey"}
+            {"monkey"},
+            {"normal"}
 		};
 
 		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
@@ -161,12 +162,12 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			fltr = strtok ( optarg,"," );
 			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
-				for( i = 0; i < 12; i++ )
+				for( i = 0; i < 13; i++ )
 				{
 					if( strcmp(fltr,filters[i]) == 0 )
 						break;
 				}
-				if( i >= 12 )
+				if( i >= 13 )
 				{
 					fprintf( stderr,"Unknown filter %s\n",fltr );
 					usage();
