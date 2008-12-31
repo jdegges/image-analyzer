@@ -48,6 +48,7 @@
 #define COPY    10
 #define MBOX    11
 #define MONKEY  12
+#define NORMAL  13
 
 
 static inline int offset( int w, int x, int y, int p )
@@ -61,11 +62,12 @@ static inline int offset( int w, int x, int y, int p )
 /* Import filters */
 #include "filters/copy.h"
 #include "filters/curvature.h"
+#include "filters/diff.h"
 #include "filters/draw_best_box.h"
 #include "filters/first_derivative.h"
 #include "filters/flow.h"
-#include "filters/diff.h"
 #include "filters/monkey.h"
+#include "filters/normal.h"
 #include "filters/sad.h"
 #include "filters/ssd.h"
 
@@ -98,6 +100,7 @@ void init_filters( void )
     filters.filters_init[COPY]      = NULL;
     filters.filters_init[MBOX]      = NULL;
     filters.filters_init[MONKEY]    = NULL;
+    filters.filters_init[NORMAL]    = NULL;
 
     filters.filters_exec[SAD]       = &sad;
     filters.filters_exec[DERIV]     = &fstderiv;
@@ -111,6 +114,7 @@ void init_filters( void )
     filters.filters_exec[COPY]      = &copy;
     filters.filters_exec[MBOX]      = &draw_best_box;
     filters.filters_exec[MONKEY]    = &monkey;
+    filters.filters_exec[NORMAL]    = &normal;
 
     filters.filters_clos[SAD]       = NULL;
     filters.filters_clos[DERIV]     = NULL;
@@ -125,6 +129,7 @@ void init_filters( void )
     filters.filters_clos[COPY]      = NULL;
     filters.filters_clos[MBOX]      = NULL;
     filters.filters_clos[MONKEY]    = NULL;
+    filters.filters_clos[NORMAL]    = NULL;
 }
 
 #endif
