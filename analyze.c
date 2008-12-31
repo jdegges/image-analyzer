@@ -283,7 +283,7 @@ void* analyze_exec( void* vptr )
     ia_image_t** iaim = malloc( sizeof(ia_image_t*)*i_maxrefs );
 
     if( !iaim )
-        pthread_exit( NULL );
+        ia_pthread_exit( NULL );
 
     while( 1 )
     {
@@ -348,7 +348,8 @@ void* analyze_exec( void* vptr )
 
     ia_free( iaim );
     ia_free( iax );
-    pthread_exit( NULL );
+    ia_pthread_exit( NULL );
+    return NULL;
 }
 
 int analyze( ia_param_t* p )
@@ -373,10 +374,7 @@ int analyze( ia_param_t* p )
 
         ia_error( "analyze: creating process thread with bufno %d\n", i );
         rc = ia_pthread_create( &my_threads[i], &ias->attr, &analyze_exec, (void*) iax );
-        if( rc ) {
-            fprintf( stderr, "analyze(): ia_pthread_create() returned code %d\n", rc );
-            return 1;
-        }
+        ia_pthread_error( rc, "analyze()", "ia_pthread_create()" );
     }
 
     while( !ias->iaio->eoi )
@@ -384,7 +382,7 @@ int analyze( ia_param_t* p )
     
     for( i = 0; i < ias->param->i_threads; i++ )
     {
-        rc = pthread_join( my_threads[i], &status );
+        rc = ia_pthread_join( my_threads[i], &status );
         ia_pthread_error( rc, "analyze()", "pthread_join()" );
     }
 

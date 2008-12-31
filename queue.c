@@ -25,7 +25,6 @@
 #endif
 
 #include <unistd.h>
-#include <pthread.h>
 #include <assert.h>
 
 #include "queue.h"
@@ -39,9 +38,9 @@ ia_queue_t* ia_queue_open( size_t size )
     ia_memset( q, 0, sizeof(ia_queue_t) );
     q->size = size;
     q->count = 0;
-    pthread_mutex_init( &q->mutex, NULL );
-    pthread_cond_init( &q->cond_ro, NULL );
-    pthread_cond_init( &q->cond_rw, NULL );
+    ia_pthread_mutex_init( &q->mutex, NULL );
+    ia_pthread_cond_init( &q->cond_ro, NULL );
+    ia_pthread_cond_init( &q->cond_rw, NULL );
     return q;
 }
 
@@ -56,10 +55,10 @@ void ia_queue_close( ia_queue_t* q )
         iaf = ia_queue_pop( q );
         ia_image_free( iaf );
     }
-    pthread_mutex_unlock( &q->mutex );
-    pthread_mutex_destroy( &q->mutex );
-    pthread_cond_destroy( &q->cond_ro );
-    pthread_cond_destroy( &q->cond_rw );
+    ia_pthread_mutex_unlock( &q->mutex );
+    ia_pthread_mutex_destroy( &q->mutex );
+    ia_pthread_cond_destroy( &q->cond_ro );
+    ia_pthread_cond_destroy( &q->cond_rw );
     ia_free( q );
 }
 

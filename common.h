@@ -208,6 +208,11 @@ static inline ia_pixel_t ia_abs( ia_pixel_t v )
     return fabs( v );
 }
 
+static inline void ia_pthread_exit( void* value_ptr )
+{
+    pthread_exit( value_ptr );
+}
+
 static inline int ia_pthread_create (pthread_t *__restrict thread,
                                      __const pthread_attr_t *__restrict attr,
                                      void *(*start_routine) (void *),
@@ -221,13 +226,11 @@ static inline int ia_pthread_join( pthread_t thread, void **value_ptr )
     return pthread_join( thread, value_ptr );
 }
 
-/*
 static inline int ia_pthread_mutex_init( pthread_mutex_t *__restrict mutex,
-                                         const ptherad_mutexattr_t *__restrict attr)
+                                         const pthread_mutexattr_t *__restrict attr)
 {
     return pthread_mutex_init( mutex, attr );
 }
-*/
 
 static inline int ia_pthread_mutex_destroy( pthread_mutex_t *mutex )
 {
@@ -276,44 +279,13 @@ static inline void ia_pthread_error( int rc, char* a, char* b )
 {
     if( rc ) {
         fprintf( stderr, "%s: the call to %s returned error code %d\n", a, b, rc );
-        exit( 1 );
-        //pthread_exit( NULL );
+        //exit( 1 );
+        ia_pthread_exit( NULL );
     }
 }
 
 ia_image_t* ia_image_create( size_t size );
 void ia_image_free( ia_image_t* iaf );
-
-/*
-inline ia_image_t* ia_image_create( size_t size )
-{
-    ia_image_t* iaf = malloc( sizeof(ia_image_t) );
-    if( iaf == NULL )
-        return NULL;
-    ia_memset( iaf, 0, sizeof(ia_image_t) );
-
-    iaf->pix = malloc( sizeof(ia_pixel_t)*size );
-    if( iaf->pix == NULL )
-        return NULL;
-    ia_memset( iaf->pix, 0, sizeof(ia_pixel_t)*size );
-
-    pthread_mutex_init( &iaf->mutex, NULL );
-    ia_pthread_cond_init( &iaf->cond_ro, NULL );
-    ia_pthread_cond_init( &iaf->cond_rw, NULL );
-
-    return iaf;
-}
-
-static inline void ia_image_free( ia_image_t* iaf )
-{
-    pthread_mutex_destroy( &iaf->mutex );
-    pthread_cond_destroy( &iaf->cond_ro );
-    pthread_cond_destroy( &iaf->cond_rw );
-
-    ia_free( iaf->pix );
-    ia_free( iaf );
-}
-*/
 
 #define ia_error(format, ...) { if(debug) fprintf(stderr,format, ## __VA_ARGS__); }
 

@@ -617,10 +617,7 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
 
 static inline void iaio_file_close( iaio_t* iaio )
 {
-//    printf("closing fin\n"); fflush(stdout);
     fclose( iaio->fin.filp );
-//    printf("freeing fin.buf\n");
-    fflush(stdout);
     ia_free( iaio->fin.buf );
 }
 

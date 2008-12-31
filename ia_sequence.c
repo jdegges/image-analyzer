@@ -70,13 +70,14 @@ void* ia_seq_manage_input( void* vptr )
                 iaf->i_frame = i_frame++;
                 ia_queue_push( ias->input_queue, iaf );
             }
-            pthread_exit( NULL );
+            ia_pthread_exit( NULL );
         }
         snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
         iaf->i_frame = ias->i_frame = i_frame++;
 
         ia_queue_push( ias->input_queue, iaf );
     }
+    return NULL;
 }
 
 /*
@@ -107,7 +108,7 @@ void* ia_seq_manage_output( void* vptr )
             end--;
             ia_queue_shove( ias->output_free, iar );
             if( end == 0 )
-                pthread_exit( NULL );
+                ia_pthread_exit( NULL );
             i_frame++;
             continue;
         }
@@ -116,7 +117,7 @@ void* ia_seq_manage_output( void* vptr )
         if( iaio_outputimage(ias->iaio, iar) )
         {
             fprintf( stderr, "ERROR: Unable to save image to %s\n", iar->name );
-            pthread_exit( NULL );
+            ia_pthread_exit( NULL );
         }
         i_frame++;
 
@@ -125,6 +126,7 @@ void* ia_seq_manage_output( void* vptr )
         else
             ia_queue_shove( ias->output_free, iar );
     }
+    return NULL;
 }
 
 /* initialize a new ia_seq */
