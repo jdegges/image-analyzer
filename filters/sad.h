@@ -26,7 +26,7 @@
 static inline void sad( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
 {
     int i, j, h, k;
-    const double op = 1.0 / (s->param->i_mb_size*s->param->i_mb_size);
+    //const double op = 1.0 / (s->param->i_mb_size*s->param->i_mb_size);
 
     assert( s->param->i_maxrefs > 1 );
 
@@ -63,9 +63,9 @@ static inline void sad( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
                 }
             }
 
-            iar->pix[cr] *= op; //clip_uint8( s->iar->pix[cr] ); //op;
-            iar->pix[cg] *= op; //clip_uint8( s->iar->pix[cg] ); //op;
-            iar->pix[cb] *= op; //clip_uint8( s->iar->pix[cb] ); //op;
+            iar->pix[cr] = clip_uint8( iar->pix[cr] ); //op;
+            iar->pix[cg] = clip_uint8( iar->pix[cg] ); //op;
+            iar->pix[cb] = clip_uint8( iar->pix[cb] ); //op;
         }
     }
 }
