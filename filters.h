@@ -49,6 +49,7 @@
 #define MBOX    11
 #define MONKEY  12
 #define NORMAL  13
+#define GRAYSCALE 15
 
 
 static inline int offset( int w, int x, int y, int p )
@@ -66,6 +67,7 @@ static inline int offset( int w, int x, int y, int p )
 #include "filters/draw_best_box.h"
 #include "filters/first_derivative.h"
 #include "filters/flow.h"
+#include "filters/grayscale.h"
 #include "filters/monkey.h"
 #include "filters/normal.h"
 #include "filters/sad.h"
@@ -78,9 +80,9 @@ typedef void (*clos_funcs)(void);
 
 typedef struct ia_filters_t
 {
-    init_funcs filters_init[15];
-    exec_funcs filters_exec[15];
-    clos_funcs filters_clos[15];
+    init_funcs filters_init[20];
+    exec_funcs filters_exec[20];
+    clos_funcs filters_clos[20];
 } ia_filters_t;
 
 ia_filters_t filters;
@@ -101,6 +103,7 @@ void init_filters( void )
     filters.filters_init[MBOX]      = NULL;
     filters.filters_init[MONKEY]    = NULL;
     filters.filters_init[NORMAL]    = NULL;
+    filters.filters_init[GRAYSCALE] = NULL;
 
     filters.filters_exec[SAD]       = &sad;
     filters.filters_exec[DERIV]     = &fstderiv;
@@ -115,6 +118,7 @@ void init_filters( void )
     filters.filters_exec[MBOX]      = &draw_best_box;
     filters.filters_exec[MONKEY]    = &monkey;
     filters.filters_exec[NORMAL]    = &normal;
+    filters.filters_exec[GRAYSCALE] = &grayscale;
 
     filters.filters_clos[SAD]       = NULL;
     filters.filters_clos[DERIV]     = NULL;
@@ -130,6 +134,7 @@ void init_filters( void )
     filters.filters_clos[MBOX]      = NULL;
     filters.filters_clos[MONKEY]    = NULL;
     filters.filters_clos[NORMAL]    = NULL;
+    filters.filters_clos[GRAYSCALE] = NULL;
 }
 
 #endif
