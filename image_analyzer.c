@@ -161,7 +161,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		{
 			fltr = NULL;
 			fltr = strtok ( optarg,"," );
-			for( c = 0; c < 20 && fltr != NULL; c++ )
+			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
 				for( i = 0; i < 14; i++ )
 				{

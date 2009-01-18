@@ -20,8 +20,8 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
-#ifndef _H_FIRST_GRAYSCALE
-#define _H_FIRST_GRAYSCALE
+#ifndef _H_GRAYSCALE
+#define _H_GRAYSCALE
 
 static inline void grayscale( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
 {

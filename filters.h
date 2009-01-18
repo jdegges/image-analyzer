@@ -49,7 +49,7 @@
 #define MBOX    11
 #define MONKEY  12
 #define NORMAL  13
-#define GRAYSCALE 15
+#define GRAYSCALE 14
 
 
 static inline int offset( int w, int x, int y, int p )
