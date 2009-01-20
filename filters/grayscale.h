@@ -23,24 +23,8 @@
 #ifndef _H_GRAYSCALE
 #define _H_GRAYSCALE
 
-static inline void grayscale( ia_seq_t* s, ia_image_t** iaim, ia_image_t* iar )
-{
-    ia_image_t* iaf = iaim[0];
-    int i;
+#include "filters.h"
 
-    for( i = s->param->i_height; i--; )
-    {
-        int j;
-        for( j = s->param->i_width; j--; )
-        {
-            int pix;
-            double gray = 0.30 * iaf->pix[offset(s->param->i_width,j,i,0)]
-                        + 0.59 * iaf->pix[offset(s->param->i_width,j,i,1)]
-                        + 0.11 * iaf->pix[offset(s->param->i_width,j,i,2)];
-            for( pix = 3; pix--; )
-                iar->pix[offset(s->param->i_width,j,i,pix)] = gray;
-        }
-    }
-}
+inline void grayscale( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
 
 #endif

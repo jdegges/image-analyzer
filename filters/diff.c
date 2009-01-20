@@ -20,11 +20,15 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
-#ifndef _H_NORMAL
-#define _H_NORMAL
+#include "diff.h"
 
-#include "filters.h"
+inline void diff( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+{
+    int i;
 
-void normal( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
-
-#endif
+    assert( s->param->i_maxrefs > 1 );
+    
+    for(i = 0; i < s->param->i_size*3; i++)
+        iar->pix[i] = fabs( iaim[0]->pix[i] - iaim[1]->pix[i] );
+    fp = fp;
+}

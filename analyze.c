@@ -32,7 +32,7 @@
 #include "image_analyzer.h"
 #include "ia_sequence.h"
 #include "analyze.h"
-#include "filters.h"
+#include "filters/filters.h"
 
 /* functions that are not yet fully operable *****************************************
 int* q(ia_pixel_t* im)
@@ -254,8 +254,8 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
     /* call any init functions */
     for ( j = 0; p->filter[j] != 0; j++ )
     {
-        if( filters.filters_init[p->filter[j]] )
-            filters.filters_init[p->filter[j]]( ias );
+        if( filters.init[p->filter[j]] )
+            filters.init[p->filter[j]]( ias, ias->fparam[p->filter[j]] );
     }
 
     return ias;
@@ -268,8 +268,8 @@ static inline void analyze_deinit( ia_seq_t* s )
     /* call any filter specific close functions */
     for ( j = 0; s->param->filter[j] != 0; j++ )
     {
-        if( filters.filters_clos[s->param->filter[j]] != NULL )
-            filters.filters_clos[s->param->filter[j]]();
+        if( filters.clos[s->param->filter[j]] )
+            filters.clos[s->param->filter[j]]( s->fparam[s->param->filter[j]] );
     }
 
     ia_seq_close( s );
@@ -326,8 +326,8 @@ void* analyze_exec( void* vptr )
         /* do processing */
         for ( j = 0; iax->ias->param->filter[j] != 0 && no_filter >= 0; j++ )
         {
-            if( filters.filters_exec[iax->ias->param->filter[j]] != NULL )
-                filters.filters_exec[iax->ias->param->filter[j]]( iax->ias, iaim, iar );
+            if( filters.exec[iax->ias->param->filter[j]] )
+                filters.exec[iax->ias->param->filter[j]]( iax->ias, iax->ias->fparam[iax->ias->param->filter[j]], iaim, iar );
             else
                 no_filter++;
         }

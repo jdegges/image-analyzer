@@ -20,11 +20,10 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
-#ifndef _H_NORMAL
-#define _H_NORMAL
-
 #include "filters.h"
 
-void normal( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
-
-#endif
+inline void copy( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaf, ia_image_t* iar )
+{
+    ia_memcpy_pixel( iar->pix,iaf[0]->pix,s->param->i_size*3 );
+    fp = fp;
+}

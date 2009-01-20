@@ -35,6 +35,7 @@
 
 #define MAX_THREADS 32
 
+typedef void* ia_filter_param_t;
 
 typedef struct ia_seq_t
 {
@@ -45,20 +46,21 @@ typedef struct ia_seq_t
     ia_queue_t*         output_queue;   // output queue
     ia_queue_t*         output_free;    // free buffer queue
 
-    uint64_t            i_frame;    // position of iaf in sequence
-    ia_param_t*         param;      // contains all parameters
+    uint64_t            i_frame;        // position of iaf in sequence
+    ia_param_t*         param;          // contains all sequence parameters
+    ia_filter_param_t   fparam[20];     // contains filter parameters
 
-    pthread_t           tio[2];     // 0 - id of read thread
-                                    // 1 - id of write thread
+    pthread_t           tio[2];         // 0 - id of read thread
+                                        // 1 - id of write thread
     pthread_attr_t      attr;
 
-    struct iaio_t*      iaio;       // used to hold specifics of io
+    struct iaio_t*      iaio;           // used to hold specifics of io
     pthread_mutex_t     eoi_mutex;
 
     /* FIXME these should be moved to analyze.c. returned by init() as void*
      * and passed to bhatta() .. or just created in bhatta() each time */
-    uint8_t*            mask;       // used in bhatta
-    uint8_t*            diffImage;  // bhatta
+    uint8_t*            mask;           // used in bhatta
+    uint8_t*            diffImage;      // bhatta
 } ia_seq_t;
 
 

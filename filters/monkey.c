@@ -20,11 +20,34 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
-#ifndef _H_NORMAL
-#define _H_NORMAL
+#include "monkey.h"
 
-#include "filters.h"
+inline void monkey( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+{
+    int i,j;
+    double dev, avg;
 
-void normal( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
+    i = s->param->i_size*3-1;
+    while( i-- )
+    {
+        avg = 0;
+        j = s->param->i_maxrefs;
+        while( j-- )
+            avg += iaim[j]->pix[i];
 
-#endif
+        avg /= s->param->i_maxrefs;
+
+        dev = 0;
+        iar->pix[i] = iaim[s->param->i_maxrefs-1]->pix[i];
+        j = s->param->i_maxrefs;
+        while( j-- )
+        {
+            if( ia_abs(avg-iaim[j]->pix[i]) > dev )
+            {
+                dev = ia_abs(avg-iaim[j]->pix[i]);
+                iar->pix[i] = iaim[j]->pix[i];
+            }
+        }
+    }
+    fp = fp;
+}
