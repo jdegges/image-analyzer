@@ -1,11 +1,11 @@
-#CC=/home/jdegges/gumstix/gumstix-oe/tmp/cross/arm-angstrom-linux-gnueabi/bin/gcc
-CC=gcc
-CFLAGS=--fast-math -O6 -g -W -Wall
-LIBS=-lm -lfreeimage -lpthread -lSDL
-OBJECTS = analyze.o common.o iaio.o ia_sequence.o image_analyzer.o queue.o
+#CC		:= /home/jdegges/gumstix/gumstix-oe/tmp/cross/arm-angstrom-linux-gnueabi/bin/gcc
+CC		:= gcc
+CFLAGS	:= --fast-math -O6 -g -W -Wall
+LIBS	:= -lm -lfreeimage -lpthread -lSDL
+OBJECTS	:= $(patsubst %.c,%.o,$(wildcard *.c filters/*.c))
 
-ia: $(OBJECTS)
+ia : $(OBJECTS)
 	$(CC) $(CFLAGS) $(OBJECTS) -o ia $(LIBS)
 
-clean:
-	rm *.o ia
+clean :
+	rm *.o filters/*.o ia &> /dev/null || true
