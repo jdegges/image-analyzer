@@ -145,7 +145,7 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     ia_memset( s,0,sizeof(ia_seq_t) );
     s->param = p;
 
-    s->iaio = iaio_open( s );
+    s->iaio = iaio_open( p );
     if( s->iaio == NULL )
     {
         fprintf( stderr, "ERROR: ia_seq_open(): couldnt open iaio_t object\n" );

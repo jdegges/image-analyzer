@@ -27,7 +27,6 @@
 #include <SDL/SDL.h>
 #include "common.h"
 #include "image_analyzer.h"
-#include "ia_sequence.h"
 
 #define IAIO_DISK       1
 #define IAIO_DISPLAY    2
@@ -88,7 +87,7 @@ int iaio_getimage( iaio_t* iaio, ia_image_t* iaf );
 int iaio_outputimage( iaio_t* iaio, ia_image_t* iar );
 
 /* open iaio object */
-iaio_t* iaio_open( ia_seq_t* ias );
+iaio_t* iaio_open( ia_param_t* p );
 
 /* close iaio object */
 void iaio_close( iaio_t* iaio );

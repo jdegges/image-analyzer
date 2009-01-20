@@ -644,7 +644,7 @@ static inline void iaio_display_close( void )
     SDL_Quit();
 }
 
-iaio_t* iaio_open( ia_seq_t* ias )
+iaio_t* iaio_open( ia_param_t* p )
 {
     iaio_t* iaio = malloc( sizeof(iaio_t) );
 
@@ -654,10 +654,10 @@ iaio_t* iaio_open( ia_seq_t* ias )
     iaio->output_type = 0;
 
     /* if cam input */
-    if( ias->param->b_vdev )
+    if( p->b_vdev )
     {
         iaio->input_type |= IAIO_CAMERA;
-        if( iaio_cam_init(iaio, ias->param) )
+        if( iaio_cam_init(iaio, p) )
         {
             fprintf( stderr, "ERROR: iaio_open(): failed to initialize input file\n" );
             return NULL;
@@ -667,21 +667,21 @@ iaio_t* iaio_open( ia_seq_t* ias )
     else
     {
         iaio->input_type |= IAIO_FILE;
-        if( iaio_file_init(iaio, ias->param) )
+        if( iaio_file_init(iaio, p) )
         {
             fprintf( stderr, "ERROR: iaio_open(): failed to initialize camera\n" );
             return NULL;
         }
     }
 
-    if( ias->param->output_directory[0] )
+    if( p->output_directory[0] )
     {
         iaio->output_type |= IAIO_DISK;
         iaio->dib = FreeImage_AllocateT( FIT_BITMAP, iaio->i_width, iaio->i_height, 24,
                                      FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
 
     }
-    if( ias->param->display )
+    if( p->display )
     {
         iaio->output_type |= IAIO_DISPLAY;
         iaio_display_init( iaio );
