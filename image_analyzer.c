@@ -143,7 +143,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"mbox"},
             {"monkey"},
             {"normal"},
-            {"grayscale"}
+            {"grayscale"},
+            {"blur"}
 		};
 
 		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
@@ -163,12 +164,12 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			fltr = strtok ( optarg,"," );
 			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
-				for( i = 0; i < 14; i++ )
+				for( i = 0; i < 15; i++ )
 				{
 					if( strcmp(fltr,filters[i]) == 0 )
 						break;
 				}
-				if( i >= 14 )
+				if( i >= 15 )
 				{
 					fprintf( stderr,"Unknown filter %s\n",fltr );
 					usage();
@@ -236,9 +237,9 @@ void usage ( void )
     printf ( "  -x, --ext <string>              Output file name extension [bmp]\n" );
     printf ( "  -p, --display                   Display live output\n" );
 	printf ( "\n" );
-	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence\n" );
+	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence:\n" );
 	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,\n" );
-    printf ( "                                      curv,ssd,me,blobs,monkey,normal,grayscale\n" );
+    printf ( "                                      curv,ssd,me,blobs,monkey,normal,grayscale,blur\n" );
     printf ( "  -w, --width <int>               Image width, must be specified in video capture mode\n" );
     printf ( "  -h, --height <int>              Image height, must be specified in video capture mode\n" );
     printf ( "  -m, --refs <int>                Maximum number of refs to cache [4]\n" );
