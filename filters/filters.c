@@ -39,6 +39,7 @@ void init_filters( void )
     filters.init[MONKEY]    = NULL;
     filters.init[NORMAL]    = NULL;
     filters.init[GRAYSCALE] = NULL;
+    filters.init[BLUR]      = NULL;
 
     filters.exec[SAD]       = &sad;
     filters.exec[DERIV]     = &fstderiv;
@@ -54,6 +55,7 @@ void init_filters( void )
     filters.exec[MONKEY]    = &monkey;
     filters.exec[NORMAL]    = &normal;
     filters.exec[GRAYSCALE] = &grayscale;
+    filters.exec[BLUR]      = &blur;
 
     filters.clos[SAD]       = NULL;
     filters.clos[DERIV]     = NULL;
@@ -70,4 +72,5 @@ void init_filters( void )
     filters.clos[MONKEY]    = NULL;
     filters.clos[NORMAL]    = NULL;
     filters.clos[GRAYSCALE] = NULL;
+    filters.clos[BLUR]      = NULL;
 }

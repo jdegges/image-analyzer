@@ -50,6 +50,7 @@
 #define MONKEY  12
 #define NORMAL  13
 #define GRAYSCALE 14
+#define BLUR    15
 
 
 static inline int offset( int w, int x, int y, int p )
@@ -60,6 +61,7 @@ static inline int offset( int w, int x, int y, int p )
 #define O( y,x ) (s->param->i_width*3*y + x*3)
 
 /* Import filters */
+#include "blur.h"
 #include "copy.h"
 #include "curvature.h"
 #include "diff.h"
