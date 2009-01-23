@@ -45,6 +45,8 @@
 
 static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
 {
+    uint32_t i;
+
     if( SDL_MUSTLOCK(iaio->screen) ) {
         if( SDL_LockSurface(iaio->screen) < 0 ) {
             fprintf( stderr, "Can't lock screen: %s\n", SDL_GetError() );
@@ -52,7 +54,8 @@ static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
         }
     }
 
-    ia_memcpy_pixel_to_uint8( (uint8_t*) iaio->screen->pixels, iar->pix, iaio->i_size*3 );
+    for( i = 0; i < iaio->i_height; i++ )
+        ia_memcpy_pixel_to_uint8( (uint8_t*)iaio->screen->pixels+i*iaio->i_width*3, iar->pix+(iaio->i_height-i)*iaio->i_width*3, iaio->i_width*3 );
 
     if( SDL_MUSTLOCK(iaio->screen) ) {
         SDL_UnlockSurface( iaio->screen );
