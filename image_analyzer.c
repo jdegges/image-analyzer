@@ -69,7 +69,6 @@ int main ( int argc,char** argv )
 int parse_args ( ia_param_t* p,int argc,char** argv )
 {
 	int c;
-	char* fltr;
 
     memset( p->input_file,0,sizeof(char)*1024 );
     memset( p->output_directory,0,sizeof(char)*1024 );
@@ -77,6 +76,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     strncpy( p->video_device,"/dev/video0",1024 );
     strncpy( p->ext,"bmp",16 );
 
+    p->stream = 0;
     p->i_mb_size = 15;
     p->i_maxrefs = 4;
     p->i_size = 0;
@@ -108,14 +108,14 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 
 	for ( ;; )
 	{
-		int i, option_index = 0;
+		int option_index = 0;
 		static struct option long_options[] = {
 			{"input"        ,1,0,0},
 			{"output"       ,1,0,0},
 			{"filter"       ,1,0,0},
 			{"mb-size"      ,1,0,0},
 			{"display"      ,0,0,0},
-			{"stats"        ,0,0,0},
+			{"stream"       ,0,0,0},
 			{"help"         ,0,0,0},
             {"width"        ,1,0,0},
             {"height"       ,1,0,0},
@@ -127,6 +127,31 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"vframes"      ,1,0,0},
 			{0              ,0,0,0}
 		};
+
+        char formats[][25] = {
+            {"bmp"},
+            {"exr"},
+            {"gif"},
+            {"hdr"},
+            {"ico"},
+            {"jpg"},
+            {"jpeg"},
+            {"jif"},
+            {"jp2"},
+            {"jpx"},
+            {"jpc"},
+            {"j2k"},
+            {"jp2"},
+            {"pbm"},
+            {"pgm"},
+            {"png"},
+            {"ppm"},
+            {"targa"},
+            {"tiff"},
+            {"wbmp"},
+            {"xpm"},
+            {0}
+        };
 
 		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
 		if ( c == -1 )
@@ -141,10 +166,11 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			strncpy ( p->output_directory, optarg, 1024 );
 		else if( (option_index == 2 && c == 0 ) || (option_index == 0 && c == 'f') )
 		{
-			fltr = NULL;
+			char* fltr = NULL;
 			fltr = strtok( optarg,"," );
 			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
+                int i;
                 for( i = 0; *FILTERS[i] != -1; i++ )
                 {
                     int pos;
@@ -169,7 +195,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		else if( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
             p->display = 1;
 		else if( (option_index == 5 && c == 0) || (option_index == 0 && c == 's') )
-            ;
+            p->stream = 1;
 		else if( option_index == 6 && c == 0 )
 		{
 			usage();
@@ -186,10 +212,29 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
         else if( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
             p->i_maxrefs = strtoul( optarg, NULL, 10 );
         else if( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )
+        {
             strncpy( p->ext, optarg, 10 );
+            int i;
+            for( i = 0; !*formats[i]; i++ )
+            {
+                char* a = p->ext;
+                char* b = formats[i];
+
+                while( (*a != '\0' && *b != '\0')
+                        && (toupper(*a++) == toupper(*b++)) );
+                if( *a == '\0' && *b == '\0' )
+                    break;
+            }
+            if( !*formats[i] )
+            {
+                fprintf( stderr,"Unknown format %s\n", p->ext );
+                usage();
+                return 1;
+            }
+        }
         else if( (option_index == 13 && c == 0) || (option_index == 0 && c == 't') )
             p->i_threads = strtoul( optarg, NULL, 10 );
-        else if( (option_index == 14 && c == 0))
+        else if( (option_index == 14 && c == 0) )
             p->i_vframes = strtoul( optarg, NULL, 10 );
 		else
 		{
@@ -221,6 +266,7 @@ void usage ( void )
     printf ( "  -d, --video-device <string>     Video device to capture images from [/dev/video0]\n" );
     printf ( "  -x, --ext <string>              Output file name extension [bmp]\n" );
     printf ( "  -p, --display                   Display live output\n" );
+    printf ( "  -s, --stream                    Save images to one file, specified by -o\n" );
 	printf ( "\n" );
 	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence:\n" );
 	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,\n" );
@@ -232,7 +278,6 @@ void usage ( void )
     printf ( "\n" );
     printf ( "  --vframes <int>                 The number of frames to process\n" );
     printf ( "  -t, --threads <int>             Parallel processing\n" );
-	printf ( "  -s, --stats                     Calculates and prints statistics [not available]\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );
 	printf ( "  --help                          Display this help menu\n" );
 	printf ( "\n" );

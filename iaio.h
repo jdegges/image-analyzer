@@ -58,9 +58,15 @@ typedef struct iaio_cam_t
 /* image list-file io parameters */
 typedef struct iaio_file_t
 {
-    FILE*   filp;
-    char*   filename;
-    char*   buf;
+    /* file io */
+    FILE*       filp;
+    char*       filename;
+    char*       buf;
+
+    /* stream io */
+    FreeImageIO io;
+    FILE*       output_stream;
+    char        mime_type[16];
 } iaio_file_t;
 
 typedef struct iaio_t
@@ -72,12 +78,12 @@ typedef struct iaio_t
     iaio_file_t     fin;        // for file input
 
     SDL_Surface*    screen;     // for displaying video
-    FIBITMAP*       dib;            // for writing images to disk
-    uint64_t    last_frame;
-    uint32_t    i_size;
-    uint32_t    i_width;
-    uint32_t    i_height;
-    bool        eoi;
+    FIBITMAP*       dib;        // for writing images to disk
+    uint64_t        last_frame;
+    uint32_t        i_size;
+    uint32_t        i_width;
+    uint32_t        i_height;
+    bool            eoi;
 } iaio_t;
 
 /* captures image from iaio stream and stores into the iaf image object */

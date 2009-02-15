@@ -70,10 +70,35 @@ static inline int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
     if ( iaio->dib == NULL )
         return 1;
 
-    ia_memcpy_pixel_to_uint8( FreeImage_GetBits(iaio->dib),iar->pix,iaio->i_size*3 );
+    ia_memcpy_pixel_to_uint8( FreeImage_GetBits(iaio->dib),
+                              iar->pix,
+                              iaio->i_size*3 );
 
-    if ( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),iaio->dib,iar->name,0) )
-        return 0;
+    if( iaio->fin.output_stream != NULL )
+    {
+        fprintf( iaio->fin.output_stream,
+                 "--myboundary\nContent-type: image/%s\n\n",
+                 iaio->fin.mime_type );
+
+        if( FreeImage_SaveToHandle(FreeImage_GetFIFFromFilename(iar->name),
+                               iaio->dib,
+                               &iaio->fin.io,
+                               (fi_handle)iaio->fin.output_stream,
+                               0) )
+        {
+            fflush( iaio->fin.output_stream );
+            usleep( 55000 );
+            return 0;
+        }
+    }
+    else
+    {
+        if( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
+                           iaio->dib,
+                           iar->name,
+                           0) )
+            return 0;
+    }
 
     fprintf( stderr, "iaio_saveimage(): FAILED write to %s\n", iar->name );
     
@@ -614,6 +639,35 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
         fprintf( stderr, "ERROR: iaio_file_init(): error getting file name off input file\n" );
         return 1;
     }
+
+    /* set stream parameters if writing to stream */
+    if( param->stream )
+    {
+        fin->io.read_proc = NULL;
+        fin->io.write_proc = (void*) &fwrite;
+        fin->io.seek_proc = (void*) &fseek;
+        fin->io.tell_proc = (void*) &ftell;
+
+        if( !strncmp("-", param->output_directory, 1) )
+            fin->output_stream = stdout;
+        else
+            fin->output_stream = fopen( param->output_directory, "w" );
+        assert( fin->output_stream != NULL );
+
+        fprintf( fin->output_stream,
+                 "Content-type: multipart/x-mixed-replace; boundary=--myboundary\n\n" );
+
+        if( !strncmp("gif", param->ext, 16) )
+            snprintf( fin->mime_type, 16, "gif" );
+        else if( !strncmp("png", param->ext, 16) )
+            snprintf( fin->mime_type, 16, "x-png" );
+        else if( !strncmp("bmp", param->ext, 16) )
+            snprintf( fin->mime_type, 16, "x-ms-bmp" );
+        else
+            snprintf( fin->mime_type, 16, "jpeg" );
+    }
+    else
+        fin->output_stream = NULL;
 
     return 0;
 }
