@@ -32,11 +32,9 @@
 
 #include "common.h"
 #include "analyze.h"
+#include "filters/filters.h"
 
 int parse_args ( ia_param_t* p,int argc,char** argv );
-
-#define O( x,y ) ((WIDTH)*(y)+(x))
-
 void usage ( void );
 
 int main ( int argc,char** argv )
@@ -129,23 +127,6 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"vframes"      ,1,0,0},
 			{0              ,0,0,0}
 		};
-		char filters[][20] = {
-			{"sad"},
-			{"deriv"},
-			{"flow"},
-			{"curv"},
-			{"ssd"},
-			{"me"},
-			{"blobs"},
-            {"diff"},
-            {"bhatta"},
-            {"copy"},
-            {"mbox"},
-            {"monkey"},
-            {"normal"},
-            {"grayscale"},
-            {"blur"}
-		};
 
 		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
 		if ( c == -1 )
@@ -161,15 +142,19 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		else if( (option_index == 2 && c == 0 ) || (option_index == 0 && c == 'f') )
 		{
 			fltr = NULL;
-			fltr = strtok ( optarg,"," );
+			fltr = strtok( optarg,"," );
 			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
-				for( i = 0; i < 15; i++ )
-				{
-					if( strcmp(fltr,filters[i]) == 0 )
-						break;
-				}
-				if( i >= 15 )
+                for( i = 0; *FILTERS[i] != -1; i++ )
+                {
+                    int pos;
+                    for( pos = 0; (fltr[pos] != '\0' && FILTERS[i][pos] != '\0')
+                                  && (toupper(fltr[pos])
+                                      == toupper(FILTERS[i][pos])); pos++ );
+                    if( fltr[pos] == '\0' && FILTERS[i][pos] == '\0' )
+                        break;
+                }
+                if( *FILTERS[i] == -1 )
 				{
 					fprintf( stderr,"Unknown filter %s\n",fltr );
 					usage();
