@@ -22,55 +22,68 @@
 
 #include "filters.h"
 
+/* Import filters */
+#include "blur.h"
+#include "copy.h"
+#include "curvature.h"
+#include "diff.h"
+#include "draw_best_box.h"
+#include "edges.h"
+#include "flow.h"
+#include "grayscale.h"
+#include "monkey.h"
+#include "normal.h"
+#include "sad.h"
+#include "ssd.h"
+
 void init_filters( void )
 {
-    filters.init[SAD]       = NULL;
-    filters.init[DERIV]     = NULL;
-    filters.init[FLOW]      = NULL;
-    filters.init[CURV]      = NULL;
-    filters.init[SSD]       = NULL;
-    filters.init[SSD]       = NULL;
-    filters.init[ME]        = NULL;
-    filters.init[BLOBS]     = NULL;
-    filters.init[DIFF]      = NULL;
-    filters.init[BHATTA]    = NULL;
-    filters.init[COPY]      = NULL;
-    filters.init[MBOX]      = NULL;
-    filters.init[MONKEY]    = NULL;
-    filters.init[NORMAL]    = NULL;
-    filters.init[GRAYSCALE] = NULL;
-    filters.init[BLUR]      = NULL;
+    filters.init[BLUR]                 = NULL;
+    filters.exec[BLUR]                 = &blur_exec;
+    filters.clos[BLUR]                 = NULL;
 
-    filters.exec[SAD]       = &sad;
-    filters.exec[DERIV]     = &fstderiv;
-    filters.exec[FLOW]      = &flow;
-    filters.exec[CURV]      = &curvature;
-    filters.exec[SSD]       = &ssd;
-    filters.exec[ME]        = NULL;
-    filters.exec[BLOBS]     = NULL;
-    filters.exec[DIFF]      = &diff;
-    filters.exec[BHATTA]    = NULL;
-    filters.exec[COPY]      = &copy;
-    filters.exec[MBOX]      = &draw_best_box;
-    filters.exec[MONKEY]    = &monkey;
-    filters.exec[NORMAL]    = &normal;
-    filters.exec[GRAYSCALE] = &grayscale;
-    filters.exec[BLUR]      = &blur;
+    filters.init[COPY]                 = NULL;
+    filters.exec[COPY]                 = &copy_exec;
+    filters.clos[COPY]                 = NULL;
 
-    filters.clos[SAD]       = NULL;
-    filters.clos[DERIV]     = NULL;
-    filters.clos[FLOW]      = NULL;
-    filters.clos[CURV]      = NULL;
-    filters.clos[SSD]       = NULL;
-    filters.clos[SSD]       = NULL;
-    filters.clos[ME]        = NULL;
-    filters.clos[BLOBS]     = NULL;
-    filters.clos[DIFF]      = NULL;
-    filters.clos[BHATTA]    = NULL;
-    filters.clos[COPY]      = NULL;
-    filters.clos[MBOX]      = NULL;
-    filters.clos[MONKEY]    = NULL;
-    filters.clos[NORMAL]    = NULL;
-    filters.clos[GRAYSCALE] = NULL;
-    filters.clos[BLUR]      = NULL;
+    filters.init[CURVATURE]            = NULL;
+    filters.exec[CURVATURE]            = &curvature_exec;
+    filters.clos[CURVATURE]            = NULL;
+
+    filters.init[DIFF]                 = NULL;
+    filters.exec[DIFF]                 = &diff_exec;
+    filters.clos[DIFF]                 = NULL;
+
+    filters.init[DRAW_BEST_BOX]        = NULL;
+    filters.exec[DRAW_BEST_BOX]        = &draw_best_box_exec;
+    filters.clos[DRAW_BEST_BOX]        = NULL;
+
+    filters.init[EDGES]                = NULL;
+    filters.exec[EDGES]                = &fstderiv_exec;
+    filters.clos[EDGES]                = NULL;
+
+    filters.init[FLOW]                 = NULL;
+    filters.exec[FLOW]                 = &flow_exec;
+    filters.clos[FLOW]                 = NULL;
+
+    filters.init[GRAYSCALE]            = NULL;
+    filters.exec[GRAYSCALE]            = &grayscale_exec;
+    filters.clos[GRAYSCALE]            = NULL;
+
+    filters.init[MONKEY]               = NULL;
+    filters.exec[MONKEY]               = &monkey_exec;
+    filters.clos[MONKEY]               = NULL;
+
+    filters.init[NORMAL]               = NULL;
+    filters.exec[NORMAL]               = &normal_exec;
+    filters.clos[NORMAL]               = NULL;
+
+    filters.init[SAD]                  = NULL;
+    filters.exec[SAD]                  = &sad_exec;
+    filters.clos[SAD]                  = NULL;
+
+    filters.init[SSD]                  = NULL;
+    filters.exec[SSD]                  = &ssd_exec;
+    filters.clos[SSD]                  = NULL;
+
 }

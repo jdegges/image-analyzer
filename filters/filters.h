@@ -35,23 +35,35 @@
 #include "../image_analyzer.h"
 #include "../ia_sequence.h"
 
-/* Filter Indexes */
-#define SAD     1
-#define DERIV   2
-#define FLOW    3
-#define CURV    4
-#define SSD     5
-#define ME      6
-#define BLOBS   7
-#define DIFF    8
-#define BHATTA  9
-#define COPY    10
-#define MBOX    11
-#define MONKEY  12
-#define NORMAL  13
-#define GRAYSCALE 14
-#define BLUR    15
+/* Filters Indexes */
+#define BLUR            1
+#define COPY            2
+#define CURVATURE       3
+#define DIFF            4
+#define DRAW_BEST_BOX   5
+#define EDGES           6
+#define FLOW            7
+#define GRAYSCALE       8
+#define MONKEY          9
+#define NORMAL          10
+#define SAD             11
+#define SSD             12
 
+static const char FILTERS[][30] = {
+    {"BLUR"},
+    {"COPY"},
+    {"CURVATURE"},
+    {"DIFF"},
+    {"DRAW_BEST_BOX"},
+    {"EDGES"},
+    {"FLOW"},
+    {"GRAYSCALE"},
+    {"MONKEY"},
+    {"NORMAL"},
+    {"SAD"},
+    {"SSD"},
+    {-1}
+};
 
 static inline int offset( int w, int x, int y, int p )
 {
@@ -60,19 +72,6 @@ static inline int offset( int w, int x, int y, int p )
 
 #define O( y,x ) (s->param->i_width*3*y + x*3)
 
-/* Import filters */
-#include "blur.h"
-#include "copy.h"
-#include "curvature.h"
-#include "diff.h"
-#include "draw_best_box.h"
-#include "first_derivative.h"
-#include "flow.h"
-#include "grayscale.h"
-#include "monkey.h"
-#include "normal.h"
-#include "sad.h"
-#include "ssd.h"
 
 /* Set up the filter function pointers */
 typedef void (*init_funcs)(ia_seq_t*, ia_filter_param_t*);
