@@ -11,3 +11,8 @@ Compile:
 
 Run:
     ./ia --help
+
+
+If you want to add or remove any filters you will need to run the filter
+generation script to re-generate the headers:
+    ./generate-filters.pl
