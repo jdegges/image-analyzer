@@ -22,7 +22,7 @@
 
 #include "monkey.h"
 
-inline void monkey( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+inline void monkey_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
 {
     int i,j;
     double dev, avg;

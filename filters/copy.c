@@ -22,7 +22,7 @@
 
 #include "filters.h"
 
-inline void copy( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaf, ia_image_t* iar )
+inline void copy_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaf, ia_image_t* iar )
 {
     ia_memcpy_pixel( iar->pix,iaf[0]->pix,s->param->i_size*3 );
     fp = fp;

@@ -25,6 +25,6 @@
 
 #include "filters.h"
 
-void draw_best_box( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
+void draw_best_box_exec( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
 
 #endif

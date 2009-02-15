@@ -22,7 +22,7 @@
 
 #include "grayscale.h"
 
-inline void grayscale( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+inline void grayscale_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
 {
     ia_image_t* iaf = iaim[0];
     int i;

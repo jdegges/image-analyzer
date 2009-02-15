@@ -37,7 +37,7 @@ static inline void gaussian( double* ptr, ssize_t size, double std )
     }
 }
 
-inline void blur( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+inline void blur_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
 {
     static const double std = 2.5;
     ia_image_t* iaf = iaim[0];

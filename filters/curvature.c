@@ -22,7 +22,7 @@
 
 #include "curvature.h"
 
-inline void curvature( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+inline void curvature_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
 {
     int i, j;
     double kr, kg, kb, op;

@@ -25,6 +25,6 @@
 
 #include "filters.h"
 
-inline void flow( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
+inline void flow_exec( ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t* );
 
 #endif

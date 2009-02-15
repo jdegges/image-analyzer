@@ -22,7 +22,7 @@
 
 #include "draw_best_box.h"
 
-void draw_best_box( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
+void draw_best_box_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_image_t* iar )
 {
     int i, j;
     int top, bottom, left, right;
