@@ -295,12 +295,12 @@ void* analyze_exec( void* vptr )
         iaf = ia_queue_pop( iax->ias->input_queue );
         if( iaf->eoi )
         {
-            ia_queue_shove( iax->ias->output_queue, iaf );
+            ia_queue_shove( iax->ias->output_queue, iaf, iaf->i_frame );
             break;
         }
 
         current_frame = iaf->i_frame;
-        ia_queue_shove_sorted( iax->ias->proc_queue, iaf );
+        ia_queue_shove_sorted( iax->ias->proc_queue, iaf, iaf->i_frame );
 
         if( current_frame < (uint32_t) i_maxrefs )
             continue;
@@ -343,7 +343,7 @@ void* analyze_exec( void* vptr )
             ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i], i_maxrefs );
 
         /* close output buf (signal manage output) */
-        ia_queue_push_sorted( iax->ias->output_queue, iar );
+        ia_queue_push_sorted( iax->ias->output_queue, iar, iar->i_frame );
     }
 
     ia_free( iaim );

@@ -74,7 +74,7 @@ void* ia_seq_manage_input( void* vptr )
         {
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
-            ia_queue_push( ias->input_free, iaf );
+            ia_queue_push( ias->input_free, iaf, iaf->i_frame );
             while( i_threads-- )
             {
                 if( ia_queue_is_empty(ias->input_free) )
@@ -83,14 +83,14 @@ void* ia_seq_manage_input( void* vptr )
                     iaf = ia_queue_pop( ias->input_free );
                 iaf->eoi = true;
                 iaf->i_frame = i_frame++;
-                ia_queue_push( ias->input_queue, iaf );
+                ia_queue_push( ias->input_queue, iaf, iaf->i_frame );
             }
             ia_pthread_exit( NULL );
         }
         snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
         iaf->i_frame = ias->i_frame = i_frame++;
 
-        ia_queue_push( ias->input_queue, iaf );
+        ia_queue_push( ias->input_queue, iaf, iaf->i_frame );
 
         gettimeofday( &frame_end_time, NULL );
         spf = ias->param->i_spf - (frame_end_time.tv_sec - frame_start_time.tv_sec);
@@ -116,7 +116,7 @@ void* ia_seq_manage_output( void* vptr )
     /* while there is more output */
     for( ;; )
     {
-        iar = ia_queue_pop_frame( ias->output_queue, i_frame );
+        iar = ia_queue_pop_item( ias->output_queue, i_frame );
         if( iar == NULL )
         {
             usleep ( 50 );
@@ -126,7 +126,7 @@ void* ia_seq_manage_output( void* vptr )
         if( iar->eoi )
         {
             end--;
-            ia_queue_shove( ias->output_free, iar );
+            ia_queue_shove( ias->output_free, iar, iar->i_frame );
             if( end == 0 )
                 ia_pthread_exit( NULL );
             i_frame++;
@@ -147,7 +147,7 @@ void* ia_seq_manage_output( void* vptr )
         if( ias->iaio->eoi )
             ia_image_free( iar );
         else
-            ia_queue_push( ias->output_free, iar );
+            ia_queue_push( ias->output_free, iar, iar->i_frame );
     }
     return NULL;
 }
@@ -184,14 +184,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->input_free = ia_queue_open( 2 );
     if( s->input_free == NULL )
         return NULL;
-    // fill free queue
-    for( i = 2; i--; )
-    {
-        iaf = ia_image_create( s->param->i_size*3 );
-        if( iaf == NULL )
-            return NULL;
-        ia_queue_push( s->input_free, iaf );
-    }
 
     /* allocate output buffers */
     s->output_queue = ia_queue_open( s->param->i_threads+1 );
@@ -200,14 +192,6 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     s->output_free = ia_queue_open( s->param->i_threads+1 );
     if( s->output_free == NULL )
         return NULL;
-    // fill free queue
-    for( i = s->param->i_threads+1; i--; )
-    {
-        iaf = ia_image_create( s->param->i_size*3 );
-        if( iaf == NULL )
-            return NULL;
-        ia_queue_push( s->output_free, iaf );
-    }
     s->i_frame = 0;
 
     /* allocate proess bufs */
