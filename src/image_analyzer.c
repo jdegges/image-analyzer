@@ -193,7 +193,14 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 		else if( (option_index == 3 && c == 0) || (option_index == 0 && c == 'b') )
             p->i_mb_size = strtoul( optarg, NULL, 10 );
 		else if( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
+        {
+#ifndef HAS_LIBSDL
+                printf( "SDL is disabled, recompile with --enable-sdl to use this feature.\n" );
+                usage();
+                return 1;
+#endif
             p->display = 1;
+        }
 		else if( (option_index == 5 && c == 0) || (option_index == 0 && c == 's') )
             p->stream = 1;
 		else if( option_index == 6 && c == 0 )
@@ -265,7 +272,9 @@ void usage ( void )
 	printf ( "  -o, --output <string>           Directory to store output into\n" );
     printf ( "  -d, --video-device <string>     Video device to capture images from [/dev/video0]\n" );
     printf ( "  -x, --ext <string>              Output file name extension [bmp]\n" );
+#ifdef HAVE_LIBSDL
     printf ( "  -p, --display                   Display live output\n" );
+#endif
     printf ( "  -s, --stream                    Save images to one file, specified by -o\n" );
 	printf ( "\n" );
 	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence:\n" );

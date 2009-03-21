@@ -24,7 +24,9 @@
 #define _H_IAIO
 
 #include <FreeImage.h>
+#ifdef HAS_LIBSDL
 #include <SDL/SDL.h>
+#endif
 #include "common.h"
 #include "image_analyzer.h"
 
@@ -77,7 +79,9 @@ typedef struct iaio_t
     iaio_cam_t      cam;        // for cam input
     iaio_file_t     fin;        // for file input
 
+#ifdef HAS_LIBSDL
     SDL_Surface*    screen;     // for displaying video
+#endif
     FIBITMAP*       dib;        // for writing images to disk
     uint64_t        last_frame;
     uint32_t        i_size;
