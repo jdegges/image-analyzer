@@ -113,7 +113,10 @@ void* ia_seq_manage_output( void* vptr )
             continue;
         }
 
-        snprintf( iar->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, i_frame, ias->param->ext );
+        snprintf( iar->name, 1024, "%s/image-%010lld.%s",
+                  ias->param->output_directory, i_frame, ias->param->ext );
+        snprintf( iar->thumbname, 1024, "%s/_thumb.image-%010lld.%s",
+                  ias->param->output_directory, i_frame, ias->param->ext );
         if( iaio_outputimage(ias->iaio, iar) )
         {
             fprintf( stderr, "ERROR: Unable to save image to %s\n", iar->name );

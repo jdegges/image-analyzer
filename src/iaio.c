@@ -99,7 +99,24 @@ static inline int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
                            iaio->dib,
                            iar->name,
                            0) )
+        {
+            if( iaio->b_thumbnail )
+            {
+                FIBITMAP* thumbnail = FreeImage_MakeThumbnail( iaio->dib, 100, true );
+                if( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
+                                   thumbnail,
+                                   iar->thumbname,
+                                   0) )
+                {
+                    FreeImage_Unload( thumbnail );
+                    return 0;
+                }
+                fprintf( stderr, "iaio_saveimage(): FAILED to write to %s\n", iar->thumbname );
+                return 1;
+
+            }
             return 0;
+        }
     }
 
     fprintf( stderr, "iaio_saveimage(): FAILED write to %s\n", iar->name );
@@ -751,6 +768,7 @@ iaio_t* iaio_open( ia_param_t* p )
     }
 
     iaio->eoi = false;
+    iaio->b_thumbnail = p->b_thumbnail;
 
     return iaio;
 }

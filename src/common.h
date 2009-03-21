@@ -42,6 +42,7 @@ static const int debug = 0;
  * i_frame: position of this frame in image stream
  * pix    : pixel data
  * name   : output name
+ * thumbname : thumbnail name
  * users  : number of threads using this image
  * ready  : if input image  -> must be set to read data
  *          if output image -> must be set for system to save data
@@ -50,6 +51,7 @@ static const int debug = 0;
 typedef struct ia_image_t
 {
     char        name[1024];
+    char        thumbname[1024];
     uint64_t    i_frame;
     int32_t     i_refcount;
     ia_pixel_t* pix;

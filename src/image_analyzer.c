@@ -76,6 +76,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     strncpy( p->video_device,"/dev/video0",1024 );
     strncpy( p->ext,"bmp",16 );
 
+    p->b_thumbnail = 0;
     p->stream = 0;
     p->i_mb_size = 15;
     p->i_maxrefs = 4;
@@ -125,6 +126,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"ext"          ,1,0,0},
             {"threads"      ,1,0,0},
             {"vframes"      ,1,0,0},
+            {"thumbnail"    ,0,0,0},
 			{0              ,0,0,0}
 		};
 
@@ -153,7 +155,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {0}
         };
 
-		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:t:",long_options,&option_index );
+		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:tj:",long_options,&option_index );
 		if ( c == -1 )
 			break;
 
@@ -239,10 +241,12 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
                 return 1;
             }
         }
-        else if( (option_index == 13 && c == 0) || (option_index == 0 && c == 't') )
+        else if( (option_index == 13 && c == 0) || (option_index == 0 && c == 'j') )
             p->i_threads = strtoul( optarg, NULL, 10 );
         else if( (option_index == 14 && c == 0) )
             p->i_vframes = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 15 && c == 0) || (option_index == 0 && c == 't') )
+            p->b_thumbnail = true;
 		else
 		{
 			fprintf ( stderr,"Unrecognized option -%c\n",c );
@@ -276,6 +280,7 @@ void usage ( void )
     printf ( "  -p, --display                   Display live output\n" );
 #endif
     printf ( "  -s, --stream                    Save images to one file, specified by -o\n" );
+    printf ( "  -t, --thumbnail                 Create thumbnails [disabled]\n" );
 	printf ( "\n" );
 	printf ( "  -f, --filter <filter list>      List of filters to be used on sequence:\n" );
 	printf ( "                                      copy,bhatta,mbox,diff,sad,deriv,flow,\n" );

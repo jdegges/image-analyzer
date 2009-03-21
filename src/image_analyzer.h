@@ -44,6 +44,7 @@ typedef struct
     int display;
     int stream;
     uint64_t i_vframes;
+    bool b_thumbnail;
 
     /* bgsub code params */
     struct {

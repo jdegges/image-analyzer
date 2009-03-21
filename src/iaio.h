@@ -88,6 +88,7 @@ typedef struct iaio_t
     uint32_t        i_width;
     uint32_t        i_height;
     bool            eoi;
+    bool            b_thumbnail;
 } iaio_t;
 
 /* captures image from iaio stream and stores into the iaf image object */
