@@ -106,7 +106,7 @@ foreach $filter ( @filters )
     print FILTERS_DOT_H "    {\"$name\"},\n";
 }
 
-print FILTERS_DOT_H "    {-1}\n};\n";
+print FILTERS_DOT_H "    {0}\n};\n";
 print FILTERS_DOT_H $body2;
 
 #my $fno = 1;

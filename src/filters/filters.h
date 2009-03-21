@@ -62,7 +62,7 @@ static const char FILTERS[][30] = {
     {"NORMAL"},
     {"SAD"},
     {"SSD"},
-    {-1}
+    {0}
 };
 
 static inline int offset( int w, int x, int y, int p )
