@@ -124,7 +124,7 @@ void* ia_seq_manage_output( void* vptr )
         if( ias->iaio->eoi )
             ia_image_free( iar );
         else
-            ia_queue_shove( ias->output_free, iar );
+            ia_queue_push( ias->output_free, iar );
     }
     return NULL;
 }

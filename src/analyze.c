@@ -343,7 +343,7 @@ void* analyze_exec( void* vptr )
             ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i], i_maxrefs );
 
         /* close output buf (signal manage output) */
-        ia_queue_shove_sorted( iax->ias->output_queue, iar );
+        ia_queue_push_sorted( iax->ias->output_queue, iar );
     }
 
     ia_free( iaim );
