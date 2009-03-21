@@ -33,16 +33,16 @@ typedef struct
     char ext[16];
     int filter[20];
 
-    int i_maxrefs;  // maximum number of refs to keep in memory
-    int i_size;     // width*height
-    int i_width;
-    int i_height;
-    int i_mb_size; 
-    int i_threads;
-    int b_verbose;
-    int b_vdev;     // true if capturing from video device
-    int display;
-    int stream;
+    int32_t i_maxrefs;  // maximum number of refs to keep in memory
+    int32_t i_size;     // width*height
+    int32_t i_width;
+    int32_t i_height;
+    int32_t i_mb_size; 
+    int32_t i_threads;
+    int32_t b_verbose;
+    int32_t b_vdev;     // true if capturing from video device
+    int32_t display;
+    int32_t stream;
     uint64_t i_vframes;
     bool b_thumbnail;
 

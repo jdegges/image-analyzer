@@ -35,7 +35,7 @@
 #include <math.h>
 #include <pthread.h>
 
-#define ia_pixel_t double
+#define ia_pixel_t int32_t
 static const int debug = 0;
 
 /* ia_image_t: image data structure

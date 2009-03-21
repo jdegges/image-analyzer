@@ -659,35 +659,6 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
         return 1;
     }
 
-    /* set stream parameters if writing to stream */
-    if( param->stream )
-    {
-        fin->io.read_proc = NULL;
-        fin->io.write_proc = (void*) &fwrite;
-        fin->io.seek_proc = (void*) &fseek;
-        fin->io.tell_proc = (void*) &ftell;
-
-        if( !strncmp("-", param->output_directory, 1) )
-            fin->output_stream = stdout;
-        else
-            fin->output_stream = fopen( param->output_directory, "w" );
-        assert( fin->output_stream != NULL );
-
-        fprintf( fin->output_stream,
-                 "Content-type: multipart/x-mixed-replace; boundary=--myboundary\n\n" );
-
-        if( !strncmp("gif", param->ext, 16) )
-            snprintf( fin->mime_type, 16, "gif" );
-        else if( !strncmp("png", param->ext, 16) )
-            snprintf( fin->mime_type, 16, "x-png" );
-        else if( !strncmp("bmp", param->ext, 16) )
-            snprintf( fin->mime_type, 16, "x-ms-bmp" );
-        else
-            snprintf( fin->mime_type, 16, "jpeg" );
-    }
-    else
-        fin->output_stream = NULL;
-
     return 0;
 }
 
@@ -760,7 +731,36 @@ iaio_t* iaio_open( ia_param_t* p )
         iaio->dib = FreeImage_AllocateT( FIT_BITMAP, iaio->i_width, iaio->i_height, 24,
                                      FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
 
+        /* set stream parameters if writing to stream */
+        if( p->stream )
+        {
+            iaio_file_t* fin = &iaio->fin;
+            fin->io.read_proc = NULL;
+            fin->io.write_proc = (void*) &fwrite;
+            fin->io.seek_proc = (void*) &fseek;
+            fin->io.tell_proc = (void*) &ftell;
+
+            if( !strncmp("-", p->output_directory, 1) )
+                fin->output_stream = stdout;
+            else
+                fin->output_stream = fopen( p->output_directory, "w" );
+            assert( fin->output_stream != NULL );
+
+            if( !strncmp("gif", p->ext, 16) )
+                snprintf( fin->mime_type, 16, "gif" );
+            else if( !strncmp("png", p->ext, 16) )
+                snprintf( fin->mime_type, 16, "x-png" );
+            else if( !strncmp("bmp", p->ext, 16) )
+                snprintf( fin->mime_type, 16, "x-ms-bmp" );
+            else
+                snprintf( fin->mime_type, 16, "jpeg" );
+        }
+        else
+        {
+            iaio->fin.output_stream = NULL;
+        }
     }
+
     if( p->display )
     {
         iaio->output_type |= IAIO_DISPLAY;
