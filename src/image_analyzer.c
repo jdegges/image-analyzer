@@ -29,6 +29,7 @@
 #include <FreeImage.h>
 #include <getopt.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "common.h"
 #include "analyze.h"
@@ -77,6 +78,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
     strncpy( p->ext,"bmp",16 );
 
     p->b_thumbnail = 0;
+    p->i_duration = 0;
+    p->i_spf = 0;
     p->stream = 0;
     p->i_mb_size = 15;
     p->i_maxrefs = 4;
@@ -127,6 +130,8 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {"threads"      ,1,0,0},
             {"vframes"      ,1,0,0},
             {"thumbnail"    ,0,0,0},
+            {"duration"     ,1,0,0},
+            {"spf"          ,1,0,0},
 			{0              ,0,0,0}
 		};
 
@@ -155,7 +160,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             {0}
         };
 
-		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:tj:",long_options,&option_index );
+		c = getopt_long ( argc,argv,"i:o:f:b:psw:h:c:r:vd:tj:l:u:",long_options,&option_index );
 		if ( c == -1 )
 			break;
 
@@ -173,7 +178,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 			for( c = 0; c < 15 && fltr != NULL; c++ )
 			{
                 int i;
-                for( i = 0; *FILTERS[i] != -1; i++ )
+                for( i = 0; *FILTERS[i] != 0; i++ )
                 {
                     int pos;
                     for( pos = 0; (fltr[pos] != '\0' && FILTERS[i][pos] != '\0')
@@ -182,7 +187,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
                     if( fltr[pos] == '\0' && FILTERS[i][pos] == '\0' )
                         break;
                 }
-                if( *FILTERS[i] == -1 )
+                if( *FILTERS[i] == 0 )
 				{
 					fprintf( stderr,"Unknown filter %s\n",fltr );
 					usage();
@@ -247,6 +252,10 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             p->i_vframes = strtoul( optarg, NULL, 10 );
         else if( (option_index == 15 && c == 0) || (option_index == 0 && c == 't') )
             p->b_thumbnail = true;
+        else if( (option_index == 16 && c == 0) || (option_index == 0 && c == 'l') )
+            p->i_duration = strtoul( optarg, NULL, 10 );
+        else if( (option_index == 17 && c == 0) || (option_index == 0 && c == 'u') )
+            p->i_spf = strtoul( optarg, NULL, 10 );
 		else
 		{
 			fprintf ( stderr,"Unrecognized option -%c\n",c );
@@ -291,7 +300,9 @@ void usage ( void )
     printf ( "  -b, --mb-size <int>             Macroblock size to use in filters that use macroblocks [15]\n" );
     printf ( "\n" );
     printf ( "  --vframes <int>                 The number of frames to process\n" );
-    printf ( "  -t, --threads <int>             Parallel processing\n" );
+    printf ( "  -j, --threads <int>             Parallel processing\n" );
+    printf ( "  -l, --duration <int>            How long to record for, measured in seconds [0]\n" );
+    printf ( "  -u, --spf <int>                 Length of time it takes to record one frame, measured in seconds [0]\n" );
     printf ( "  -v, --verbose                   Verbose/debug mode will display lots of additional information\n" );
 	printf ( "  --help                          Display this help menu\n" );
 	printf ( "\n" );

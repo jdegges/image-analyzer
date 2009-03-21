@@ -33,6 +33,8 @@ typedef struct
     char ext[16];
     int filter[20];
 
+    int32_t i_spf;      // seconds per frame
+    int32_t i_duration; // record duration in seconds
     int32_t i_maxrefs;  // maximum number of refs to keep in memory
     int32_t i_size;     // width*height
     int32_t i_width;

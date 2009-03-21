@@ -25,8 +25,10 @@
 #include <pthread.h>
 #include <errno.h>
 #include <assert.h>
-
 #include <FreeImage.h>
+#include <sys/time.h>
+#include <time.h>
+
 #include "common.h"
 #include "iaio.h"
 #include "ia_sequence.h"
@@ -44,18 +46,31 @@ void* ia_seq_manage_input( void* vptr )
     ia_image_t* iaf;
     uint64_t i_threads = ias->param->i_threads;
     uint64_t i_frame = 0;
+    struct timeval oa_start_time, oa_current_time;
+    struct timeval frame_start_time, frame_end_time;
+    int32_t frame_remaining_time, spf;
+
+    gettimeofday( &oa_start_time, NULL );
 
     /* while there is more input */
     for( ;; )
     {
+        gettimeofday( &frame_start_time, NULL );
+
         if( ias->input_free->count + ias->input_queue->count < 2 )
             iaf = ia_image_create( ias->param->i_size*3 );
         else
             iaf = ia_queue_pop( ias->input_free );
         iaf->i_frame = i_frame;
+
+        gettimeofday( &oa_current_time, NULL );
+        frame_remaining_time = ias->param->i_duration -
+                                (oa_current_time.tv_sec - oa_start_time.tv_sec);
         
         /* capture new frame, if error/eof -> exit */
-        if( (ias->param->i_vframes && i_frame > ias->param->i_vframes) || iaio_getimage(ias->iaio, iaf) )
+        if( (ias->param->i_duration && frame_remaining_time < 0) ||
+            (ias->param->i_vframes && i_frame > ias->param->i_vframes) ||
+            iaio_getimage(ias->iaio, iaf) )
         {
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
@@ -76,6 +91,11 @@ void* ia_seq_manage_input( void* vptr )
         iaf->i_frame = ias->i_frame = i_frame++;
 
         ia_queue_push( ias->input_queue, iaf );
+
+        gettimeofday( &frame_end_time, NULL );
+        spf = ias->param->i_spf - (frame_end_time.tv_sec - frame_start_time.tv_sec);
+        if( spf > 0 )
+            sleep( spf );
     }
     return NULL;
 }
