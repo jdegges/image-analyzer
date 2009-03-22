@@ -364,6 +364,7 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
     struct timeval tv;
     int r;
     struct v4l2_buffer buf;
+    uint8_t failed = 0;
 
     for(;;)
     {
@@ -403,12 +404,44 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
         }
 
         assert( buf.index < iaio->cam.i_buffers );
-        if( iaio->cam.palette == 1 )
-            ia_memcpy_uint8_to_pixel( iaf->pix, iaio->cam.buffers[buf.index].start, iaio->cam.data_size );
-        else if( iaio->cam.palette == 2 )
-            yuv420torgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
-        else if( iaio->cam.palette == 3 )
-            yuyvtorgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
+
+        switch( iaio->cam.pixelformat )
+        {
+            case v4l2_fourcc('M','J','P','G'):
+            case v4l2_fourcc('J','P','E','G'):
+                ;FIMEMORY* hmem = FreeImage_OpenMemory( iaio->cam.buffers[buf.index].start, buf.bytesused );
+                if( hmem == NULL ) {
+                    fprintf( stderr, "Failed to open memory: %s\n", strerror(errno) );
+                    return -1;
+                }
+                FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromMemory( hmem, 0 );
+                if( fif == FIF_UNKNOWN ) {
+                    if( failed > 5 ) {
+                        fprintf( stderr, "failed to get file type from 15 consecutive frames... exiting poorly\n" );
+                        return -1;
+                    }
+                    fprintf(stderr, "fialed to get file type from memory... trying again. %s\n", strerror(errno));
+                    failed++;
+                    continue;
+                }
+                FIBITMAP* dib = FreeImage_LoadFromMemory( fif, hmem, 0 );
+                if( dib == NULL ) {
+                    fprintf(stderr, "failed to load from memory: %s\n", strerror(errno));
+                }
+                ia_memcpy_uint8_to_pixel( iaf->pix, FreeImage_GetBits(dib), FreeImage_GetHeight(dib)*FreeImage_GetPitch(dib) );
+                //iaio->i_width*iaio->i_height*3 );
+                FreeImage_Unload( dib );
+                FreeImage_CloseMemory( hmem );
+                break;
+            case v4l2_fourcc('Y','U','Y','V'):
+                yuyvtorgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
+                break;
+            case v4l2_fourcc('Y','U','1','2'):
+                yuv420torgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
+                break;
+            default:
+                ia_memcpy_uint8_to_pixel( iaf->pix, iaio->cam.buffers[buf.index].start, buf.bytesused );
+        }
         
         if( xioctl(iaio->cam.fd,VIDIOC_QBUF,&buf) == -1 )
             errno_exit( iaio->cam.fd,"VIDIOC_QBUF" );
@@ -451,8 +484,11 @@ int iaio_cam_init ( iaio_t* iaio, ia_param_t* param )
     struct v4l2_capability cap;
     struct v4l2_format fmt;
     struct v4l2_requestbuffers reqbuf;
+    struct v4l2_fmtdesc fmtdesc;
+    //struct v4l2_frmsizeenum frmsize;
     enum v4l2_buf_type type;
     iaio_cam_t* cam = &iaio->cam;
+    uint8_t i;
 
     iaio->i_width = param->i_width;
     iaio->i_height = param->i_height;
@@ -495,6 +531,86 @@ int iaio_cam_init ( iaio_t* iaio, ia_param_t* param )
             printf( "READ/WRITE\n\n" );
     }
 
+    /* list pixel formats */
+    if( param->b_verbose )
+        printf( "Pixel Formats:\n" );
+
+    cam->pixelformat = 0;
+    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    for( i = 0; ; i++ ) {
+        uint8_t j;
+        fmtdesc.index = i;
+
+        if( xioctl(cam->fd,VIDIOC_ENUM_FMT,&fmtdesc) )
+        {
+            if( errno == EINVAL ) {
+                if( param->b_verbose )
+                    printf( "Done.\n" );
+                break;
+            } else {
+                errno_exit( cam->fd, "VIDIOC_ENUM_FMT" );
+            }
+        }
+
+        if( param->b_verbose )
+            printf( "# %d: %s, %d, %d", i, fmtdesc.description, fmtdesc.flags, fmtdesc.pixelformat );
+
+        switch( fmtdesc.pixelformat )
+        {
+            case v4l2_fourcc('M','J','P','G'):
+            case v4l2_fourcc('J','P','E','G'):
+            case v4l2_fourcc('Y','U','Y','V'):
+            case v4l2_fourcc('Y','U','1','2'):
+            case v4l2_fourcc('R','G','B','1'):
+            case v4l2_fourcc('R','4','4','4'):
+            case v4l2_fourcc('R','G','B','O'):
+            case v4l2_fourcc('R','G','B','P'):
+            case v4l2_fourcc('R','G','B','Q'):
+            case v4l2_fourcc('R','G','B','R'):
+            case v4l2_fourcc('B','G','R','3'):
+            case v4l2_fourcc('R','G','B','3'):
+            case v4l2_fourcc('B','G','R','4'):
+            case v4l2_fourcc('R','G','B','4'):
+                cam->pixelformat = fmtdesc.pixelformat;
+                if( param->b_verbose )
+                    printf( " [selected]" );
+                break;
+        }
+        printf("\n");
+
+        /* this displays the available frame sizes. some cameras do not support
+         * this feature and will break if its used. it will be commented in
+         * when the appropriate checks are done.
+        if( param->b_verbose )
+            printf( "\n\tFrame Sizes:\n" );
+
+        frmsize.pixel_format = fmtdesc.pixelformat;
+        for( j = 0; ; j++ ) {
+            frmsize.index = j;
+            if( xioctl(cam->fd,VIDIOC_ENUM_FRAMESIZES,&frmsize) ) {
+                if( errno == EINVAL ) {
+                    if( param->b_verbose )
+                        printf( "\tDone.\n" );
+                    break;
+                } else {
+                    errno_exit( cam->fd, "VIDIOC_ENUM_FRAMESIZES" );
+                }
+            }
+            if( param->b_verbose )
+                printf( "\t# %d: %dx%d\n", j, frmsize.discrete.width, frmsize.discrete.height );
+        }
+        if( !param->b_verbose && i == 0 ) {
+        fprintf( stderr,"fooooo\n");
+            break;
+        }
+        */
+    }
+
+    if( cam->pixelformat == 0 ) {
+        fprintf( stderr, "I do not support this cameras pixelformat.\n" );
+        return -1;
+    }
+
     /* set the format */
     ia_memset( &fmt,0,sizeof(fmt) );
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -509,25 +625,7 @@ int iaio_cam_init ( iaio_t* iaio, ia_param_t* param )
         printf( "height: %d\n",fmt.fmt.pix.height );
     }
 
-    if( strcasecmp((char*)cap.driver,"SentechUSB") == 0 )
-    {
-        cam->palette = 1;
-        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_BGR24;
-        cam->data_size = 3*param->i_size;
-    }
-    else if( strcasecmp((char*)cap.driver,"pwc") == 0 )
-    {
-        cam->palette = 2;
-        cam->data_size = 1.5*param->i_size;
-        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUV420;
-    }
-    else if( strcasecmp((char*)cap.driver,"uvcvideo") == 0 )
-    {
-        cam->palette = 3;
-        cam->data_size = 2*param->i_size;
-        fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-    }
-
+    fmt.fmt.pix.pixelformat = cam->pixelformat;
     if( xioctl(cam->fd,VIDIOC_S_FMT,&fmt) == -1 )
         errno_exit( cam->fd,"VIDIOC_S_FMT" );
 

@@ -46,7 +46,7 @@ typedef struct iaio_cam_buffers
 typedef struct iaio_cam_t
 {
     int fd;
-    int palette;
+    uint32_t pixelformat;
 
     iaio_cam_buffer* buffers;
 
