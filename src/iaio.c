@@ -48,7 +48,7 @@ static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
 {
     uint32_t i;
 
-#ifdef HAS_LIBSDL
+#ifdef HAVE_LIBSDL
     if( SDL_MUSTLOCK(iaio->screen) ) {
         if( SDL_LockSurface(iaio->screen) < 0 ) {
             fprintf( stderr, "Can't lock screen: %s\n", SDL_GetError() );
@@ -769,7 +769,7 @@ static inline void iaio_file_close( iaio_t* iaio )
 
 static inline int iaio_display_init( iaio_t* iaio )
 {
-#ifdef HAS_LIBSDL
+#ifdef HAVE_LIBSDL
     iaio->screen = NULL;
 
     if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
@@ -789,7 +789,7 @@ static inline int iaio_display_init( iaio_t* iaio )
 
 static inline void iaio_display_close( void )
 {
-#ifdef HAS_LIBSDL
+#ifdef HAVE_LIBSDL
     SDL_Quit();
 #endif
 }

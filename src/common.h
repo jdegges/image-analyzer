@@ -23,7 +23,9 @@
 #ifndef _H_COMMON
 #define _H_COMMON
 
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 500
+#endif
 
 #include <sys/select.h>
 #include <string.h>
@@ -35,6 +37,7 @@
 #include <math.h>
 #include <pthread.h>
 
+#include "../config.h"
 #define ia_pixel_t int32_t
 static const int debug = 0;
 

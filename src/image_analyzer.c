@@ -201,7 +201,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             p->i_mb_size = strtoul( optarg, NULL, 10 );
 		else if( (option_index == 4 && c == 0) || (option_index == 0 && c == 'p') )
         {
-#ifndef HAS_LIBSDL
+#ifndef HAVE_LIBSDL
                 printf( "SDL is disabled, recompile with --enable-sdl to use this feature.\n" );
                 usage();
                 return 1;

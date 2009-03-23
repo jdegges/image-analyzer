@@ -23,11 +23,11 @@
 #ifndef _H_IAIO
 #define _H_IAIO
 
+#include "common.h"
 #include <FreeImage.h>
-#ifdef HAS_LIBSDL
+#ifdef HAVE_LIBSDL
 #include <SDL/SDL.h>
 #endif
-#include "common.h"
 #include "image_analyzer.h"
 
 #define IAIO_DISK       1
@@ -79,7 +79,7 @@ typedef struct iaio_t
     iaio_cam_t      cam;        // for cam input
     iaio_file_t     fin;        // for file input
 
-#ifdef HAS_LIBSDL
+#ifdef HAVE_LIBSDL
     SDL_Surface*    screen;     // for displaying video
 #endif
     FIBITMAP*       dib;        // for writing images to disk
