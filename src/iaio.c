@@ -57,7 +57,9 @@ static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
     }
 
     for( i = 0; i < iaio->i_height; i++ )
-        ia_memcpy_pixel_to_uint8( (uint8_t*)iaio->screen->pixels+i*iaio->i_width*3, iar->pix+(iaio->i_height-i)*iaio->i_width*3, iaio->i_width*3 );
+        ia_memcpy_pixel_to_uint8( (uint8_t*)iaio->screen->pixels + iaio->i_width*3 * i,
+                                  iar->pix + iaio->i_width*3 * (iaio->i_height-i-1),
+                                  iaio->i_width*3 );
 
     if( SDL_MUSTLOCK(iaio->screen) ) {
         SDL_UnlockSurface( iaio->screen );
