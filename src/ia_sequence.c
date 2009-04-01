@@ -58,7 +58,7 @@ void* ia_seq_manage_input( void* vptr )
         gettimeofday( &frame_start_time, NULL );
 
         if( ias->input_free->count + ias->input_queue->count < 2 )
-            iaf = ia_image_create( ias->param->i_size*3 );
+            iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
         else
             iaf = ia_queue_pop( ias->input_free );
         iaf->i_frame = i_frame;
@@ -78,7 +78,7 @@ void* ia_seq_manage_input( void* vptr )
             while( i_threads-- )
             {
                 if( ia_queue_is_empty(ias->input_free) )
-                    iaf = ia_image_create( 1 );
+                    iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
                 else
                     iaf = ia_queue_pop( ias->input_free );
                 iaf->eoi = true;

@@ -82,7 +82,6 @@ typedef struct iaio_t
 #ifdef HAVE_LIBSDL
     SDL_Surface*    screen;     // for displaying video
 #endif
-    FIBITMAP*       dib;        // for writing images to disk
     uint64_t        last_frame;
     uint32_t        i_size;
     uint32_t        i_width;

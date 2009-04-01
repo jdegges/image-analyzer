@@ -318,7 +318,7 @@ void* analyze_exec( void* vptr )
 
         /* wait for output buf (wait for output manager signal) */
         if( ia_queue_is_empty(iax->ias->output_free) )
-            iar = ia_image_create( iax->ias->param->i_size*3 );
+            iar = ia_image_create( iax->ias->param->i_width, iax->ias->param->i_height );
         else
             iar = ia_queue_pop( iax->ias->output_free );
         iar->i_frame = current_frame;

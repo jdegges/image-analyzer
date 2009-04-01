@@ -72,59 +72,50 @@ static inline int iaio_displayimage( iaio_t* iaio, ia_image_t* iar )
 
 static inline int iaio_saveimage ( iaio_t* iaio, ia_image_t* iar )
 {
-    if ( iaio->dib == NULL )
-        return 1;
-
-    ia_memcpy_pixel_to_uint8( FreeImage_GetBits(iaio->dib),
-                              iar->pix,
-                              iaio->i_size*3 );
-
     if( iaio->fin.output_stream != NULL )
     {
         fprintf( iaio->fin.output_stream,
                  "--myboundary\nContent-type: image/%s\n\n",
                  iaio->fin.mime_type );
 
-        if( FreeImage_SaveToHandle(FreeImage_GetFIFFromFilename(iar->name),
-                               iaio->dib,
+        if( !FreeImage_SaveToHandle(FreeImage_GetFIFFromFilename(iar->name),
+                               (FIBITMAP*)iar->dib,
                                &iaio->fin.io,
                                (fi_handle)iaio->fin.output_stream,
                                0) )
         {
-            fflush( iaio->fin.output_stream );
-            usleep( 55000 );
-            return 0;
+            fprintf( stderr, "iaio_saveimage(): FAILED to write to stream\n" );
+            return 1;
         }
     }
     else
     {
-        if( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
-                           iaio->dib,
+        assert( iar->dib != NULL );
+        if( !FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
+                           (FIBITMAP*)iar->dib,
                            iar->name,
                            0) )
         {
-            if( iaio->b_thumbnail )
-            {
-                FIBITMAP* thumbnail = FreeImage_MakeThumbnail( iaio->dib, 100, true );
-                if( FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
-                                   thumbnail,
-                                   iar->thumbname,
-                                   0) )
-                {
-                    FreeImage_Unload( thumbnail );
-                    return 0;
-                }
-                fprintf( stderr, "iaio_saveimage(): FAILED to write to %s\n", iar->thumbname );
-                return 1;
+            fprintf( stderr, "iaio_saveimage(): FAILED to write %s\n", iar->name );
+            return 1;
+        }
 
+        if( iaio->b_thumbnail )
+        {
+            FIBITMAP* thumbnail = FreeImage_MakeThumbnail( (FIBITMAP*)iar->dib, 100, true );
+            if( !FreeImage_Save(FreeImage_GetFIFFromFilename(iar->name),
+                               thumbnail,
+                               iar->thumbname,
+                               0) )
+            {
+                fprintf( stderr, "iaio_saveimage(): FAILED to write %s\n", iar->name );
+                return 1;
             }
-            return 0;
+            FreeImage_Unload( thumbnail );
         }
     }
 
-    fprintf( stderr, "iaio_saveimage(): FAILED write to %s\n", iar->name );
-    
-    return 1;
+    return 0;
 }
 
 int iaio_outputimage( iaio_t* iaio, ia_image_t* iar )
@@ -323,19 +314,15 @@ int iaio_file_probeimage( iaio_t* iaio )
  */
 int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
-    FIBITMAP* dib, *dib24;
+    FIBITMAP* dib = NULL;
     FREE_IMAGE_FORMAT fif;
 
     if( ia_fgets(iaio->fin.buf, 1024, iaio->fin.filp) == NULL ) {
-        //fprintf( stderr, "ERROR: iaio_file_getimage(): error getting file name off input file\n" );
         return 1;
     }
     char* str = ia_strtok( iaio->fin.buf, "\n" );
 
-    dib = NULL;
-    fif = FIF_UNKNOWN;
     fif = FreeImage_GetFileType ( str,0 );
-
     if ( fif == FIF_UNKNOWN )
         fif = FreeImage_GetFIFFromFilename ( str );
     if ( (fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif) )
@@ -346,13 +333,13 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
         return 1;
     }
 
-    dib24 = FreeImage_ConvertTo24Bits( dib );
+    if( iaf->dib ) {
+        FreeImage_Unload( (FIBITMAP*)iaf->dib );
+    }
+    iaf->dib = FreeImage_ConvertTo24Bits( dib );
+    iaf->pix = FreeImage_GetBits( (FIBITMAP*)iaf->dib );
     FreeImage_Unload( dib );
-    dib = dib24;
 
-    ia_memcpy_uint8_to_pixel( iaf->pix,FreeImage_GetBits(dib),iaio->i_size*3 );
-
-    FreeImage_Unload ( dib );
     return 0;
 }
 
@@ -431,7 +418,6 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
                     fprintf(stderr, "failed to load from memory: %s\n", strerror(errno));
                 }
                 ia_memcpy_uint8_to_pixel( iaf->pix, FreeImage_GetBits(dib), FreeImage_GetHeight(dib)*FreeImage_GetPitch(dib) );
-                //iaio->i_width*iaio->i_height*3 );
                 FreeImage_Unload( dib );
                 FreeImage_CloseMemory( hmem );
                 break;
@@ -740,7 +726,6 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
         return 1;
     }
 
-
     /* get width and height from first image */
     if( iaio_file_probeimage(iaio) ) {
         fprintf( stderr, "ERROR: iaio_file_init(): couldn't probe list\n" );
@@ -753,10 +738,6 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
     iaio->fin.filp = fopen( param->input_file, "r" );
     if( iaio->fin.filp == NULL ) {
         fprintf( stderr, "ERROR: iaio_file_init(): couldnt open file %s\n", iaio->fin.filename );
-        return 1;
-    }
-    if( ia_fgets(iaio->fin.buf, 1024, iaio->fin.filp) == NULL ) {
-        fprintf( stderr, "ERROR: iaio_file_init(): error getting file name off input file\n" );
         return 1;
     }
 
@@ -829,8 +810,6 @@ iaio_t* iaio_open( ia_param_t* p )
     if( p->output_directory[0] )
     {
         iaio->output_type |= IAIO_DISK;
-        iaio->dib = FreeImage_AllocateT( FIT_BITMAP, iaio->i_width, iaio->i_height, 24,
-                                     FI_RGBA_RED,FI_RGBA_GREEN,FI_RGBA_BLUE );
 
         /* set stream parameters if writing to stream */
         if( p->stream )
@@ -876,11 +855,8 @@ iaio_t* iaio_open( ia_param_t* p )
 
 inline void iaio_close( iaio_t* iaio )
 {
-    if( iaio->output_type & IAIO_DISK )
-        FreeImage_Unload( iaio->dib );
     if( iaio->output_type & IAIO_DISPLAY )
         iaio_display_close();
-
     if( iaio->input_type & IAIO_CAMERA )
         iaio_cam_close( iaio );
     if( iaio->input_type & IAIO_FILE )

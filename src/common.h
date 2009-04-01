@@ -38,7 +38,7 @@
 #include <pthread.h>
 
 #include "../config.h"
-#define ia_pixel_t int32_t
+#define ia_pixel_t uint8_t
 static const int debug = 0;
 
 /* ia_image_t: image data structure
@@ -58,6 +58,7 @@ typedef struct ia_image_t
     uint64_t    i_frame;
     int32_t     i_refcount;
     ia_pixel_t* pix;
+    void*       dib;
     struct ia_image_t* next;
     struct ia_image_t* last;
     bool        eoi;
@@ -289,7 +290,7 @@ static inline void ia_pthread_error( int rc, char* a, char* b )
     }
 }
 
-ia_image_t* ia_image_create( size_t size );
+ia_image_t* ia_image_create( size_t width, size_t height );
 void ia_image_free( ia_image_t* iaf );
 
 #define ia_error(format, ...) { if(debug) fprintf(stderr,format, ## __VA_ARGS__); }
