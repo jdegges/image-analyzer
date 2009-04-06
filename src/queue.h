@@ -39,7 +39,7 @@ typedef struct ia_queue_obj_t
 {
     uint32_t                i_pos;
     void*                   data;
-    uint8_t                 i_refcount;
+    int32_t                 life;
     struct ia_queue_obj_t*  next;
     struct ia_queue_obj_t*  last;
     pthread_mutex_t         mutex;
@@ -53,13 +53,13 @@ typedef struct ia_queue_t
     ia_queue_obj_t* tail;
     uint32_t        count;
     uint32_t        size;
-    uint32_t        time;
+    int32_t         life;
     pthread_mutex_t mutex;
     pthread_cond_t  cond_nonempty;
     pthread_cond_t  cond_nonfull;
 } ia_queue_t;
 
-ia_queue_t* ia_queue_open( size_t size );
+ia_queue_t* ia_queue_open( size_t size, int life );
 void ia_queue_close( ia_queue_t* q );
 int ia_queue_tap( ia_queue_t* q, void* data, uint32_t pos );
 void ia_queue_push( ia_queue_t* q, void* data, uint32_t pos );
@@ -68,8 +68,9 @@ int ia_queue_push_sorted( ia_queue_t* q, void* data, uint32_t pos );
 int ia_queue_shove_sorted( ia_queue_t* q, void* data, uint32_t pos );
 void* ia_queue_pop( ia_queue_t* q );
 void* ia_queue_pek( ia_queue_t* q, uint32_t pos );
-void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, void* data, uint8_t count );
+void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count );
 void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos );
+void* ia_queue_pop_item_unlocked( ia_queue_t* q, uint32_t pos );
 int ia_queue_is_full( ia_queue_t* q );
 int ia_queue_is_empty( ia_queue_t* q );
 

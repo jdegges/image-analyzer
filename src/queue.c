@@ -32,12 +32,12 @@
 
 #define ABS_MAX_SIZE 30
 
-ia_queue_t* ia_queue_open( size_t size )
+ia_queue_t* ia_queue_open( size_t size, int life )
 {
     ia_queue_t* q = ia_malloc( sizeof(ia_queue_t) );
     ia_memset( q, 0, sizeof(ia_queue_t) );
     q->size = size;
-    q->count = 0;
+    q->life = life;
     ia_pthread_mutex_init( &q->mutex, NULL );
     ia_pthread_cond_init( &q->cond_nonempty, NULL );
     ia_pthread_cond_init( &q->cond_nonfull, NULL );
@@ -114,10 +114,10 @@ int _ia_queue_push( ia_queue_t* q, void* data, uint32_t pos, ia_queue_pushtype_t
         return 1;
     }
 
-    obj->i_refcount = 0;
     obj->last =
     obj->next = NULL;
     obj->i_pos = pos;
+    obj->life = q->life;
 
     // add image to queue
     if( pt == QUEUE_SSORT || pt == QUEUE_PSORT ) {
@@ -260,12 +260,6 @@ void* ia_queue_pek( ia_queue_t* q, uint32_t pos )
         }
 
         if( obj != NULL ) {
-            // increase reference count
-            rc = ia_pthread_mutex_lock( &obj->mutex );
-            ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_lock()" );
-            obj->i_refcount++;
-            rc = ia_pthread_mutex_unlock( &obj->mutex );
-            ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_unlock()" );
             break;
         } else {
             rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
@@ -280,7 +274,7 @@ void* ia_queue_pek( ia_queue_t* q, uint32_t pos )
     return obj->data;
 }
 
-void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, void* data, uint8_t count )
+void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
 {
     int rc;
     ia_queue_obj_t* obj;
@@ -304,40 +298,28 @@ void ia_queue_sht( ia_queue_t* q, ia_queue_t* f, void* data, uint8_t count )
     rc = ia_pthread_mutex_lock( &obj->mutex );
     ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
 
-    obj->i_refcount--;
+    obj->life--;
 
     rc = ia_pthread_mutex_unlock( &obj->mutex );
     ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
 
-    // find min and max frameno
-    obj = min = max = q->tail;
+    // remove dead frames on the list
+    obj = q->tail;
     while( obj != NULL ) {
-        if( min->i_pos > obj->i_pos )
-            min = obj;
-        if( max->i_pos < obj->i_pos )
-            max = obj;
+        assert( obj->life >= 0 );
+        if( obj->life == 0 ) {
+            void* data = ia_queue_pop_item_unlocked( q, obj->i_pos );
+            if( data != NULL )
+                ia_image_free( (ia_image_t*)data );
+            obj = q->tail;
+            continue;
+        }
         obj = obj->next;
     }
 
-    if( max != NULL && min != NULL
-        && (max->i_pos - min->i_pos > count
-            || count == 1)
-        && min->i_refcount <= 0 ) {
-        void* data;
-
-        // unlock queue
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
-
-        // pop min frame
-        data = ia_queue_pop_item( q, min->i_pos );
-        if( data != NULL )
-            ia_queue_shove( f, data, min->i_pos );
-    } else {
-        // unlock queue
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
-    }
+    // unlock queue
+    rc = ia_pthread_mutex_unlock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
 }
 
 /* returns unlocked image from queue */
@@ -406,6 +388,56 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
 
     ia_queue_destroy_obj( obj );
 
+    return data;
+}
+
+void* ia_queue_pop_item_unlocked( ia_queue_t* q, uint32_t pos )
+{
+    int rc;
+    ia_queue_obj_t* obj;
+    void* data;
+
+    // pop image off queue
+    obj = q->tail;
+    while( obj != NULL ) {
+        if( obj->i_pos == pos )
+            break;
+        obj = obj->next;
+    }
+
+    // if frame wasnt on list -> return null
+    if( obj == NULL ) {
+        rc = ia_pthread_mutex_unlock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
+
+        return NULL;
+    }
+
+    // remove from list
+    if( obj == q->tail && obj == q->head ) {
+        q->tail =
+        q->head = NULL;
+    } else if( obj == q->tail ) {
+        q->tail = obj->next;
+        q->tail->last = NULL;
+        if( q->tail == q->head )
+            q->tail->next = NULL;
+    } else if( obj == q->head ) {
+        q->head = obj->last;
+        q->head->next = NULL;
+        if( q->tail == q->head )
+            q->head->last = NULL;
+    } else {
+        obj->last->next = obj->next;
+        obj->next->last = obj->last;
+    }
+
+    obj->last =
+    obj->next = NULL;
+    data = obj->data;
+    q->count--;
+
+    ia_queue_destroy_obj( obj );
     return data;
 }
 

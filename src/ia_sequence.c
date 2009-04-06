@@ -57,10 +57,7 @@ void* ia_seq_manage_input( void* vptr )
     {
         gettimeofday( &frame_start_time, NULL );
 
-        if( ias->input_free->count + ias->input_queue->count < 2 )
-            iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
-        else
-            iaf = ia_queue_pop( ias->input_free );
+        iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
         iaf->i_frame = i_frame;
 
         gettimeofday( &oa_current_time, NULL );
@@ -74,13 +71,10 @@ void* ia_seq_manage_input( void* vptr )
         {
             ias->iaio->eoi = true;
             ias->iaio->last_frame = i_frame;
-            ia_queue_push( ias->input_free, iaf, iaf->i_frame );
+            ia_image_free( iaf );
             while( i_threads-- )
             {
-                if( ia_queue_is_empty(ias->input_free) )
-                    iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
-                else
-                    iaf = ia_queue_pop( ias->input_free );
+                iaf = ia_image_create( ias->param->i_width, ias->param->i_height );
                 iaf->eoi = true;
                 iaf->i_frame = i_frame++;
                 ia_queue_push( ias->input_queue, iaf, iaf->i_frame );
@@ -126,7 +120,7 @@ void* ia_seq_manage_output( void* vptr )
         if( iar->eoi )
         {
             end--;
-            ia_queue_shove( ias->output_free, iar, iar->i_frame );
+            ia_image_free( iar );
             if( end == 0 )
                 ia_pthread_exit( NULL );
             i_frame++;
@@ -144,10 +138,7 @@ void* ia_seq_manage_output( void* vptr )
         }
         i_frame++;
 
-        if( ias->iaio->eoi )
-            ia_image_free( iar );
-        else
-            ia_queue_push( ias->output_free, iar, iar->i_frame );
+        ia_image_free( iar );
     }
     return NULL;
 }
@@ -178,24 +169,19 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
-    s->input_queue = ia_queue_open( 2 );
+    s->input_queue = ia_queue_open( 2, 0 );
     if( s->input_queue == NULL )
-        return NULL;
-    s->input_free = ia_queue_open( 2 );
-    if( s->input_free == NULL )
         return NULL;
 
     /* allocate output buffers */
-    s->output_queue = ia_queue_open( s->param->i_threads+1 );
+    s->output_queue = ia_queue_open( s->param->i_threads+1, 0 );
     if( s->output_queue == NULL )
         return NULL;
-    s->output_free = ia_queue_open( s->param->i_threads+1 );
-    if( s->output_free == NULL )
-        return NULL;
+
     s->i_frame = 0;
 
     /* allocate proess bufs */
-    s->proc_queue = ia_queue_open( s->param->i_maxrefs+1 );
+    s->proc_queue = ia_queue_open( s->param->i_maxrefs+1, s->param->i_maxrefs );
     assert( s->proc_queue );
 
     pthread_attr_init( &s->attr );
@@ -225,9 +211,7 @@ inline void ia_seq_close( ia_seq_t* s )
 
     iaio_close( s->iaio );
 
-    ia_queue_close( s->output_free );
     ia_queue_close( s->output_queue );
-    ia_queue_close( s->input_free );
     ia_queue_close( s->input_queue );
     ia_queue_close( s->proc_queue);
 

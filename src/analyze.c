@@ -317,10 +317,8 @@ void* analyze_exec( void* vptr )
         }
 
         /* wait for output buf (wait for output manager signal) */
-        if( ia_queue_is_empty(iax->ias->output_free) )
-            iar = ia_image_create( iax->ias->param->i_width, iax->ias->param->i_height );
-        else
-            iar = ia_queue_pop( iax->ias->output_free );
+        iar = ia_image_create( iax->ias->param->i_width, iax->ias->param->i_height );
+
         iar->i_frame = current_frame;
 
         /* do processing */
@@ -340,7 +338,7 @@ void* analyze_exec( void* vptr )
 
         /* close input buf (signal manage input) */
         for( i = 0; i < i_maxrefs; i++ )
-            ia_queue_sht( iax->ias->proc_queue, iax->ias->input_free, iaim[i], i_maxrefs );
+            ia_queue_sht( iax->ias->proc_queue, iaim[i], i_maxrefs );
 
         /* close output buf (signal manage output) */
         ia_queue_push_sorted( iax->ias->output_queue, iar, iar->i_frame );
