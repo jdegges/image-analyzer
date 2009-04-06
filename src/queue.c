@@ -70,18 +70,11 @@ ia_queue_obj_t* ia_queue_create_obj( void* data )
     }
 
     obj->data = data;
-    ia_pthread_mutex_init( &obj->mutex, NULL );
-    ia_pthread_cond_init( &obj->cond_nonempty, NULL );
-    ia_pthread_cond_init( &obj->cond_nonfull, NULL );
-
     return obj;
 }
 
 void ia_queue_destroy_obj( ia_queue_obj_t* obj )
 {
-    ia_pthread_mutex_destroy( &obj->mutex );
-    ia_pthread_cond_destroy( &obj->cond_nonempty );
-    ia_pthread_cond_destroy( &obj->cond_nonfull );
     ia_free( obj );
 }
 
@@ -100,14 +93,13 @@ int _ia_queue_push( ia_queue_t* q, void* data, uint32_t pos, ia_queue_pushtype_t
     rc = ia_pthread_mutex_lock( &q->mutex );
     ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
     while( q->count >= q->size ) {
-        if( pt == QUEUE_SHOVE || pt == QUEUE_SSORT ) {
-            q->size++;
+        if( pos == q->waiter_pos
+            || pt == QUEUE_SHOVE || pt == QUEUE_SSORT ) {
             break;
         }
         rc = ia_pthread_cond_wait( &q->cond_nonfull, &q->mutex );
         ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
     }
-    assert( q->count < q->size );
 
     obj = ia_queue_create_obj( data );
     if( !obj ) {
@@ -217,7 +209,6 @@ void* ia_queue_pop( ia_queue_t* q )
     obj = q->tail;
     q->tail = q->tail->next;
     data = obj->data;
-
     q->count--;
 
     // if someone is waiting to push, send signal
@@ -278,7 +269,11 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
 {
     int rc;
     ia_queue_obj_t* obj;
-    ia_queue_obj_t *min, *max;
+
+    // get lock on queue
+    rc = ia_pthread_mutex_lock( &q->mutex );
+    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
+
 
     // find associated object
     obj = q->tail;
@@ -288,20 +283,17 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
         obj = obj->next;
     }
 
-    if( obj == NULL )
+    if( obj == NULL ) {
+        // wake up the threads waiting to push to this queue
+        rc = ia_pthread_cond_signal( &q->cond_nonfull );
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
+
+        // unlock queue
+        rc = ia_pthread_mutex_unlock( &q->mutex );
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
         return;
-    
-    // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
-
-    rc = ia_pthread_mutex_lock( &obj->mutex );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
-
+    }
     obj->life--;
-
-    rc = ia_pthread_mutex_unlock( &obj->mutex );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
 
     // remove dead frames on the list
     obj = q->tail;
@@ -316,6 +308,10 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
         }
         obj = obj->next;
     }
+
+    // wake up the threads waiting to push to this queue
+    rc = ia_pthread_cond_signal( &q->cond_nonfull );
+    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
 
     // unlock queue
     rc = ia_pthread_mutex_unlock( &q->mutex );
@@ -332,6 +328,9 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
     // get lock on queue
     rc = ia_pthread_mutex_lock( &q->mutex );
     ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_lock()" );
+
+    q->waiter_pos = pos;
+
     while( q->count == 0 ) {
         rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
         ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_wait()" );
@@ -348,6 +347,9 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
 
     // if frame wasnt on list -> return null
     if( obj == NULL ) {
+        rc = ia_pthread_cond_signal( &q->cond_nonfull );
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
+
         rc = ia_pthread_mutex_unlock( &q->mutex );
         ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
 
@@ -407,9 +409,6 @@ void* ia_queue_pop_item_unlocked( ia_queue_t* q, uint32_t pos )
 
     // if frame wasnt on list -> return null
     if( obj == NULL ) {
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
-
         return NULL;
     }
 

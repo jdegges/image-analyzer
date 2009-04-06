@@ -375,9 +375,6 @@ int analyze( ia_param_t* p )
         ia_pthread_error( rc, "analyze()", "ia_pthread_create()" );
     }
 
-    while( !ias->iaio->eoi )
-        usleep( 100 );
-    
     for( i = 0; i < ias->param->i_threads; i++ )
     {
         rc = ia_pthread_join( my_threads[i], &status );

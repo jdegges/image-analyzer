@@ -42,9 +42,6 @@ typedef struct ia_queue_obj_t
     int32_t                 life;
     struct ia_queue_obj_t*  next;
     struct ia_queue_obj_t*  last;
-    pthread_mutex_t         mutex;
-    pthread_cond_t          cond_nonempty;
-    pthread_cond_t          cond_nonfull;
 } ia_queue_obj_t;
 
 typedef struct ia_queue_t
@@ -53,6 +50,7 @@ typedef struct ia_queue_t
     ia_queue_obj_t* tail;
     uint32_t        count;
     uint32_t        size;
+    uint32_t        waiter_pos;
     int32_t         life;
     pthread_mutex_t mutex;
     pthread_cond_t  cond_nonempty;
