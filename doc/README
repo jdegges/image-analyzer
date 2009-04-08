@@ -1,12 +1,23 @@
 Required libraries:
-    libsdl
     libfreeimage
     libpthread
+Optional libraries:
+    libsdl
+    opencv
 
 To install libraries on ubuntu:
-    sudo aptitude install libsdl-dev libfreeimage-dev libpthread-stubs0-dev
+    sudo aptitude install libfreeimage-dev libpthread-stubs0-dev
+Optionally:
+    sudo aptitude install libcv-dev libcvaux-dev
+    sudo aptitude install libsdl-dev
+
+You will also need to have autotools installed in order to generate the
+proper makefiles:
+    sudo aptitude install autotools-dev
 
 Compile:
+    autoreconf --install
+    ./configure
     make
 
 Run:
@@ -15,4 +26,4 @@ Run:
 
 If you want to add or remove any filters you will need to run the filter
 generation script to re-generate the headers:
-    ./generate-filters.pl
+    ../tools/generate-filters.pl
