@@ -281,7 +281,7 @@ void usage ( void )
 	printf ( "Syntax: ia --input=list.txt --output=outdir/ --filter=sad,flow\n" );
 	printf ( "\n" );
 	printf ( "Options:\n" );
-	printf ( "  -i, --input <string>            List of images to be processed\n" );
+	printf ( "  -i, --input <string>            List of images to be processed or a video file (requires ffmpeg)\n" );
 	printf ( "  -o, --output <string>           Directory to store output into\n" );
     printf ( "  -d, --video-device <string>     Video device to capture images from [/dev/video0]\n" );
     printf ( "  -x, --ext <string>              Output file name extension [bmp]\n" );

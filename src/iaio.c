@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <regex.h>
 
 #include "iaio.h"
 
@@ -446,20 +447,27 @@ int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
 int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
     /* if reading from list of images */
-    if( iaio->input_type & IAIO_FILE ) {
+    if( iaio->input_type == IAIO_FILE ) {
         if( iaio_file_getimage(iaio, iaf) ) {
             //fprintf( stderr, "ERROR: iaio_getimage(): couldn't open image from file\n" );
             return 1;
         }
     }
     /* if reading from camera */
-    if( iaio->input_type & IAIO_CAMERA ) {
+    if( iaio->input_type == IAIO_CAMERA ) {
         if( iaio_cam_getimage(iaio, iaf) < 0 ) {
             fprintf( stderr, "ERROR: iaio_getimage(): couldn't get image from cam\n" );
             return 1;
         }
     }
-
+    if( iaio->input_type == IAIO_MOVIE ) {
+#ifdef HAVE_FFMPEG
+        if( iaio_ffmpeg_read_frame(iaio->ffio, iaf) < 0 ) {
+            fprintf( stderr, "ERROR: iaio_getimage(): couldn't get image from movie file\n" );
+            return 1;
+        }
+#endif
+    }
     return 0;
 }
 
@@ -779,6 +787,9 @@ static inline void iaio_display_close( void )
 
 iaio_t* iaio_open( ia_param_t* p )
 {
+    char pattern[21] = "^.+\.([tT][xX][tT])$";
+    int status;
+    regex_t re;
     iaio_t* iaio = malloc( sizeof(iaio_t) );
 
     iaio->fin.filp = NULL;
@@ -789,24 +800,50 @@ iaio_t* iaio_open( ia_param_t* p )
     /* if cam input */
     if( p->b_vdev )
     {
-        iaio->input_type |= IAIO_CAMERA;
+        iaio->input_type = IAIO_CAMERA;
         if( iaio_cam_init(iaio, p) )
         {
             fprintf( stderr, "ERROR: iaio_open(): failed to initialize input file\n" );
             return NULL;
         }
     }
-    /* if file input */
     else
     {
-        iaio->input_type |= IAIO_FILE;
-        if( iaio_file_init(iaio, p) )
-        {
-            fprintf( stderr, "ERROR: iaio_open(): failed to initialize camera\n" );
+        if( regcomp(&re, pattern, REG_EXTENDED|REG_NOSUB) != 0 )
             return NULL;
+        status = regexec( &re, p->input_file, (size_t) 0, NULL, 0 );
+        regfree( &re );
+
+        // text file input
+        if( status == 0 )
+        {
+            iaio->input_type = IAIO_FILE;
+            if( iaio_file_init(iaio, p) )
+            {
+                fprintf( stderr, "ERROR: iaio_open(): failed to initialize camera\n" );
+                return NULL;
+            }
+        }
+        // movie file input
+        else
+        {
+#ifdef HAVE_FFMPEG
+            iaio->input_type = IAIO_MOVIE;
+            iaio->ffio = iaio_ffmpeg_init( p->input_file );
+            if( !iaio->ffio ) {
+                fprintf(stderr,"failed to open ffmpeg stuff\n");
+                return NULL;
+            }
+            iaio->i_width = iaio->ffio->i_width;
+            iaio->i_height = iaio->ffio->i_height;
+            iaio->i_size = iaio->ffio->i_size;
+#else
+            fprintf( stderr, "Video IO is not supported, recompile with ffmpeg to gain support.\n" );
+            return NULL;
+#endif
         }
     }
-
+    
     if( p->output_directory[0] )
     {
         iaio->output_type |= IAIO_DISK;
@@ -849,17 +886,24 @@ iaio_t* iaio_open( ia_param_t* p )
 
     iaio->eoi = false;
     iaio->b_thumbnail = p->b_thumbnail;
+    p->i_width = iaio->i_width;
+    p->i_height = iaio->i_height;
+    p->i_size = iaio->i_width*iaio->i_height;
 
     return iaio;
 }
 
 inline void iaio_close( iaio_t* iaio )
 {
+#ifdef HAVE_FFMPEG
+    if( iaio->input_type == IAIO_MOVIE )
+        iaio_ffmpeg_close( iaio->ffio );
+#endif
     if( iaio->output_type & IAIO_DISPLAY )
         iaio_display_close();
-    if( iaio->input_type & IAIO_CAMERA )
+    if( iaio->input_type == IAIO_CAMERA )
         iaio_cam_close( iaio );
-    if( iaio->input_type & IAIO_FILE )
+    if( iaio->input_type == IAIO_FILE )
         iaio_file_close( iaio );
 
     free( iaio );

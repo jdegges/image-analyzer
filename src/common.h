@@ -41,6 +41,10 @@
 #define ia_pixel_t uint8_t
 static const int debug = 0;
 
+#if HAVE_LIBAVCODEC && HAVE_LIBAVFORMAT && HAVE_LIBAVUTIL && HAVE_LIBSWSCALE && HAVE_LIBZ
+#define HAVE_FFMPEG
+#endif
+
 /* ia_image_t: image data structure
  * i_frame: position of this frame in image stream
  * pix    : pixel data

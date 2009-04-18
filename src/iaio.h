@@ -29,11 +29,15 @@
 #include <SDL/SDL.h>
 #endif
 #include "image_analyzer.h"
+#ifdef HAVE_FFMPEG
+#include "ffmpeg.h"
+#endif
 
 #define IAIO_DISK       1
 #define IAIO_DISPLAY    2
 #define IAIO_CAMERA     3
 #define IAIO_FILE       4
+#define IAIO_MOVIE      5
 
 /* video device interface object */
 typedef struct iaio_cam_buffers
@@ -88,6 +92,10 @@ typedef struct iaio_t
     uint32_t        i_height;
     bool            eoi;
     bool            b_thumbnail;
+
+#ifdef HAVE_FFMPEG
+    iaio_ffmpeg_t*  ffio;
+#endif
 } iaio_t;
 
 /* captures image from iaio stream and stores into the iaf image object */

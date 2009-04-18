@@ -4,6 +4,8 @@ ia_SOURCES =				\
 	analyze.h				\
 	common.c				\
 	common.h				\
+	ffmpeg.c				\
+	ffmpeg.h				\
 	iaio.c					\
 	iaio.h					\
 	ia_sequence.c			\
