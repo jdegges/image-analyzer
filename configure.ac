@@ -49,7 +49,7 @@ AS_IF([test "x$with_ffmpeg" != xno],
 
 # Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h limits.h malloc.h stdint.h stdlib.h string.h sys/ioctl.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([fcntl.h inttypes.h limits.h malloc.h stdint.h stdlib.h string.h sys/ioctl.h sys/time.h unistd.h])
 AC_CHECK_HEADERS([FreeImage.h])
 AC_CHECK_HEADERS([pthread.h])
 AS_IF([test "x$with_sdl" != xno],

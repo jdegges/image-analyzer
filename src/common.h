@@ -32,9 +32,12 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#if   defined (HAVE_STDINT_H)
 #include <stdint.h>
+#elif defined (HAVE_INTTYPES_H)
+#include <inttypes.h>
+#endif
 #include <stdbool.h>
-//#include <FreeImage.h>
 #include <math.h>
 #include <pthread.h>
 
@@ -200,21 +203,6 @@ static inline ia_pixel_format ia_convert_format( int pix_fmt, ia_pixel_format_ty
     return IA_PIX_FMT_NONE;
 }
 
-static inline int ia_select( int n, fd_set* r, fd_set* w, fd_set* e, struct timeval* t )
-{
-    return select( n,r,w,e,t );
-}
-
-static inline void* ia_memset( void* s, int c, size_t n )
-{
-    return memset( s,c,n );
-}
-
-static inline void* ia_memcpy( void* d, const void* s, size_t n )
-{
-    return memcpy( d,s,n );
-}
-
 /* you can use this to copy a uint8 array to uint16 with the efficiency of memcpy */
 static inline void* ia_memcpy_uint8_to_pixel( void* d, const void* s, size_t n )
 {
@@ -291,128 +279,42 @@ static inline void* ia_memcpy_pixel( void* d, const void* s, size_t n )
     return d;
 }
 
-
-static inline char* ia_fgets( char* s, int size, FILE* stream )
-{
-    return fgets( s, size, stream );
-}
-
-static inline char* ia_strtok( char *str, const char *delim )
-{
-    return strtok( str, delim );
-}
-
-static inline char* ia_strncpy( char* dest, const char* src, size_t n )
-{
-    return strncpy( dest, src, n );
-}
-
-static inline char* ia_strrchr( const char* s, int c )
-{
-    return strrchr( s, c );
-}
-
-static inline void* ia_malloc( size_t size )
-{
-    return malloc( size );
-}
-
-static inline void* ia_calloc( size_t nmemb, size_t size )
-{
-    return calloc( nmemb, size );
-}
-
-static inline void ia_free( void* ptr )
-{
-    free( ptr );
-}
-
-static inline FILE* ia_fopen( const char* path, const char* mode )
-{
-    return fopen( path,mode );
-}
-
-static inline int ia_fclose( FILE* fp )
-{
-    return fclose( fp );
-}
+#define ia_select select
+#define ia_memset memset
+#define ia_memcpy memcpy
+#define ia_fgets fgets
+#define ia_strtok strtok
+#define ia_strncpy strncpy
+#define ia_strrchr strrchr
+#define ia_malloc malloc
+#define ia_calloc calloc
+#define ia_free free
+#define ia_fopen fopen
+#define ia_fclose fclose
+#define ia_abs fabs
 
 static inline int clip_uint8( int v )
 {
     return ( (v < 0) ? 0 : (v > 255) ? 255 : v );
 }
 
-static inline ia_pixel_t ia_abs( ia_pixel_t v )
-{
-    return fabs( v );
-}
-
-static inline void ia_pthread_exit( void* value_ptr )
-{
-    pthread_exit( value_ptr );
-}
-
-static inline int ia_pthread_create (pthread_t *__restrict thread,
-                                     __const pthread_attr_t *__restrict attr,
-                                     void *(*start_routine) (void *),
-                                     void *__restrict arg)
-{
-    return pthread_create( thread, attr, start_routine, arg );
-}
-
-static inline int ia_pthread_join( pthread_t thread, void **value_ptr )
-{
-    return pthread_join( thread, value_ptr );
-}
-
-static inline int ia_pthread_mutex_init( pthread_mutex_t *__restrict mutex,
-                                         const pthread_mutexattr_t *__restrict attr)
-{
-    return pthread_mutex_init( mutex, attr );
-}
-
-static inline int ia_pthread_mutex_destroy( pthread_mutex_t *mutex )
-{
-    return pthread_mutex_destroy( mutex );
-}
-
-
-static inline int ia_pthread_mutex_lock( pthread_mutex_t *mutex )
-{
-    return pthread_mutex_lock( mutex );
-}
-
-static inline int ia_pthread_mutex_trylock( pthread_mutex_t *mutex )
-{
-    return pthread_mutex_trylock( mutex );
-}
-
-static inline int ia_pthread_mutex_unlock( pthread_mutex_t *mutex )
-{
-    return pthread_mutex_unlock( mutex );
-}
-
-static inline int ia_pthread_cond_signal( pthread_cond_t *cond )
-{
-    return pthread_cond_signal( cond );
-}
-
-static inline int ia_pthread_cond_wait( pthread_cond_t *__restrict cond,
-                                        pthread_mutex_t *__restrict mutex)
-{
-    return pthread_cond_wait( cond, mutex );
-}
-
-static inline int ia_pthread_cond_init( pthread_cond_t *__restrict cond,
-                                        const pthread_condattr_t *__restrict attr)
-{
-    return pthread_cond_init( cond, attr );
-}
-
-static inline int ia_pthread_cond_destroy( pthread_cond_t *cond)
-{
-    return pthread_cond_destroy( cond );
-}
+#ifdef HAVE_LIBPTHREAD
+#define ia_pthread_t                pthread_t
+#define ia_pthread_create           pthread_create
+#define ia_pthread_join             pthread_join
+#define ia_pthread_mutex_t          pthread_mutex_t
+#define ia_pthread_mutex_init       pthread_mutex_init
+#define ia_pthread_mutex_destroy    pthread_mutex_destroy
+#define ia_pthread_mutex_lock       pthread_mutex_lock
+#define ia_pthread_mutex_unlock     pthread_mutex_unlock
+#define ia_pthread_cond_t           pthread_cond_t
+#define ia_pthread_cond_init        pthread_cond_init
+#define ia_pthread_cond_destroy     pthread_cond_destroy
+#define ia_pthread_cond_broadcast   pthread_cond_broadcast
+#define ia_pthread_cond_signal      pthread_cond_signal
+#define ia_pthread_cond_wait        pthread_cond_wait
+#define ia_pthread_exit             pthread_exit
+#endif
 
 static inline void ia_pthread_error( int rc, char* a, char* b )
 {
