@@ -548,9 +548,11 @@ init_device                     (ia_v4l2_t*                 v)
     fmt.fmt.pix.field       = V4L2_FIELD_NONE;
 
     // discover what pixel formats and frmsizes are supported by the camera 
-    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     for (i = 0;; i++) {
         ia_pixel_format pf;
+
+        CLEAR (fmtdesc);
+        fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmtdesc.index = i;
 
         if (-1 == xioctl (fd, VIDIOC_ENUM_FMT, &fmtdesc))
@@ -561,8 +563,9 @@ init_device                     (ia_v4l2_t*                 v)
             available_formats[pf] = fmtdesc.pixelformat;
 
             // get best available frmsize 
-            frmsize.pixel_format = fmtdesc.pixelformat;
             for (j = 0;; j++) {
+                CLEAR (frmsize);
+                frmsize.pixel_format = fmtdesc.pixelformat;
                 frmsize.index = j;
 
                 if (-1 == xioctl (fd, VIDIOC_ENUM_FRAMESIZES, &frmsize))
@@ -703,6 +706,7 @@ v4l2_close                      (ia_v4l2_t*             v)
     stop_capturing (v);
     uninit_device (v);
     close_device (v);
+    ia_free (v);
 }
 
 #endif
