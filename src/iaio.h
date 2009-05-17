@@ -32,34 +32,18 @@
 #ifdef HAVE_FFMPEG
 #include "ffmpeg.h"
 #endif
+#ifdef HAVE_V4L2
+#include "v4l2.h"
+#endif
+#ifdef HAVE_LIBSWSCALE
+#include "swscale.h"
+#endif
 
 #define IAIO_DISK       1
 #define IAIO_DISPLAY    2
 #define IAIO_CAMERA     3
 #define IAIO_FILE       4
 #define IAIO_MOVIE      5
-
-/* video device interface object */
-typedef struct iaio_cam_buffers
-{
-    void* start;
-    size_t length;
-} iaio_cam_buffer;
-
-/* camera io parameters */
-typedef struct iaio_cam_t
-{
-    int fd;
-    uint32_t pixelformat;
-
-    iaio_cam_buffer* buffers;
-
-    unsigned int i_buffers;
-    int capturing;
-
-    int data_size;
-    int pos;
-} iaio_cam_t;
 
 /* image list-file io parameters */
 typedef struct iaio_file_t
@@ -80,7 +64,6 @@ typedef struct iaio_t
     uint8_t         input_type;
     uint8_t         output_type;
 
-    iaio_cam_t      cam;        // for cam input
     iaio_file_t     fin;        // for file input
 
 #ifdef HAVE_LIBSDL
@@ -94,7 +77,13 @@ typedef struct iaio_t
     bool            b_thumbnail;
 
 #ifdef HAVE_FFMPEG
-    ia_ffmpeg_t*  ffio;
+    ia_ffmpeg_t*    ffio;
+#endif
+#ifdef HAVE_V4L2
+    ia_v4l2_t*      v4l2;
+#endif
+#ifdef HAVE_LIBSWSCALE
+    ia_swscale_t*   c;
 #endif
 } iaio_t;
 

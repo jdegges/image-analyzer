@@ -14,6 +14,10 @@ ia_SOURCES =				\
 	image_analyzer.h		\
 	queue.c					\
 	queue.h					\
+	swscale.c				\
+	swscale.h				\
+	v4l2.c					\
+	v4l2.h					\
 	filters/blur.c			\
 	filters/blur.h			\
 	filters/copy.c			\

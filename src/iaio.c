@@ -20,24 +20,9 @@
  * THE SOFTWARE.
  *****************************************************************************/
 
-/* cam includes */
 #include <sys/time.h>
 #include <time.h>
-#include <linux/videodev2.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <assert.h>
-
-/* iaio includes */
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -132,23 +117,6 @@ int iaio_outputimage( iaio_t* iaio, ia_image_t* iar )
             return 1;
     }
     return 0;
-}
-
-static inline int xioctl( int fd, int request, void* arg )
-{
-    int r;
-    do
-    {
-        r = ioctl( fd,request,arg );
-    } while ( r == -1 && errno == EINTR );
-    return r;
-}
-
-static inline void errno_exit( int fd, const char* msg )
-{
-    fprintf ( stderr,"ERROR: errno_exit(): %s error %d, %s\n",msg,errno,strerror(errno) );
-    close ( fd );
-    exit ( EXIT_FAILURE );
 }
 
 inline int offset ( int width, int row, int col, int color )
@@ -350,93 +318,15 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
  */
 int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
-    fd_set fds;
-    struct timeval tv;
-    int r;
-    struct v4l2_buffer buf;
-    uint8_t failed = 0;
-
-    for(;;)
-    {
-        FD_ZERO( &fds );
-        FD_SET( iaio->cam.fd,&fds );
-
-        tv.tv_sec = 2;
-        tv.tv_usec = 0;
-
-        r = ia_select( iaio->cam.fd+1,&fds,NULL,NULL,&tv );
-
-        if( r == -1 )
-        {
-            if( errno == EINTR )
-            {
-                continue;
-            }
-            errno_exit( iaio->cam.fd,"ia_select" );
-        }
-
-        if( r == 0 )
-            errno_exit( iaio->cam.fd,"ia_select" );
-
-        ia_memset( &buf,0,sizeof(buf) );
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-
-        if( xioctl(iaio->cam.fd,VIDIOC_DQBUF,&buf) == -1 )
-        {
-            switch( errno )
-            {
-                case EAGAIN:
-                    continue;
-                default:
-                    errno_exit( iaio->cam.fd,"VIDIOC_DQBUF" );
-            }
-        }
-
-        assert( buf.index < iaio->cam.i_buffers );
-
-        switch( iaio->cam.pixelformat )
-        {
-            case v4l2_fourcc('M','J','P','G'):
-            case v4l2_fourcc('J','P','E','G'):
-                ;FIMEMORY* hmem = FreeImage_OpenMemory( iaio->cam.buffers[buf.index].start, buf.bytesused );
-                if( hmem == NULL ) {
-                    fprintf( stderr, "Failed to open memory: %s\n", strerror(errno) );
-                    return -1;
-                }
-                FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromMemory( hmem, 0 );
-                if( fif == FIF_UNKNOWN ) {
-                    if( failed > 5 ) {
-                        fprintf( stderr, "failed to get file type from 15 consecutive frames... exiting poorly\n" );
-                        return -1;
-                    }
-                    fprintf(stderr, "fialed to get file type from memory... trying again. %s\n", strerror(errno));
-                    failed++;
-                    continue;
-                }
-                FIBITMAP* dib = FreeImage_LoadFromMemory( fif, hmem, 0 );
-                if( dib == NULL ) {
-                    fprintf(stderr, "failed to load from memory: %s\n", strerror(errno));
-                }
-                ia_memcpy_uint8_to_pixel( iaf->pix, FreeImage_GetBits(dib), FreeImage_GetHeight(dib)*FreeImage_GetPitch(dib) );
-                FreeImage_Unload( dib );
-                FreeImage_CloseMemory( hmem );
-                break;
-            case v4l2_fourcc('Y','U','Y','V'):
-                yuyvtorgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
-                break;
-            case v4l2_fourcc('Y','U','1','2'):
-                yuv420torgb24( iaio->cam.buffers[buf.index].start, iaf->pix, iaio->i_width, iaio->i_height );
-                break;
-            default:
-                ia_memcpy_uint8_to_pixel( iaf->pix, iaio->cam.buffers[buf.index].start, buf.bytesused );
-        }
-        
-        if( xioctl(iaio->cam.fd,VIDIOC_QBUF,&buf) == -1 )
-            errno_exit( iaio->cam.fd,"VIDIOC_QBUF" );
-
-        return 0;
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
+    iaf = v4l2_readimage( iaio->v4l2, iaf );
+    if( !iaf ) {
+        return -1;
     }
+
+    ia_swscale( iaio->c, iaf, iaio->i_width, iaio->i_height );
+#endif
+    return 0;
 }
 
 /*
@@ -477,249 +367,29 @@ int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
  */
 int iaio_cam_init ( iaio_t* iaio, ia_param_t* param )
 {
-    struct v4l2_capability cap;
-    struct v4l2_format fmt;
-    struct v4l2_requestbuffers reqbuf;
-    struct v4l2_fmtdesc fmtdesc;
-    //struct v4l2_frmsizeenum frmsize;
-    enum v4l2_buf_type type;
-    iaio_cam_t* cam = &iaio->cam;
-    uint8_t i;
-
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
     iaio->i_width = param->i_width;
     iaio->i_height = param->i_height;
-    iaio->i_size = param->i_size;
-    cam->pos = 0;
 
-    if( param->b_verbose )
-        printf( "Opening the device ...\n\n" );
-    cam->fd = open( param->video_device,O_RDWR );
-    if( cam->fd == -1 )
-    {
-        perror( "OPEN" );
+    iaio->v4l2 = v4l2_open( iaio->i_width, iaio->i_height, param->video_device );
+    if( !iaio->v4l2 )
         return -1;
-    }
 
-    /* get capabilities */
-    if( xioctl(cam->fd,VIDIOC_QUERYCAP,&cap) )
-    {
-        if( errno == EINVAL )
-        {
-            if( param->b_verbose )
-                fprintf( stderr,"%s is no V4L2 device\n",param->video_device );
-            return -1;
-        }
-        else
-        {
-            errno_exit( cam->fd,"VIDIOC_QUERYCAP" );
-        }
-    }
-    if( param->b_verbose )
-    {
-        printf( "Driver: %s\n",cap.driver );
-        printf( "Card  : %s\n",cap.card );
-        printf( "Capabilities:\n" );
-        if( cap.capabilities & V4L2_CAP_VIDEO_CAPTURE )
-            printf( "capture\n" );
-        if( cap.capabilities & V4L2_CAP_STREAMING )
-            printf( "streaming\n" );
-        if( cap.capabilities & V4L2_CAP_READWRITE )
-            printf( "READ/WRITE\n\n" );
-    }
-
-    /* list pixel formats */
-    if( param->b_verbose )
-        printf( "Pixel Formats:\n" );
-
-    cam->pixelformat = 0;
-    fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    for( i = 0; ; i++ ) {
-        uint8_t j;
-        fmtdesc.index = i;
-
-        if( xioctl(cam->fd,VIDIOC_ENUM_FMT,&fmtdesc) )
-        {
-            if( errno == EINVAL ) {
-                if( param->b_verbose )
-                    printf( "Done.\n" );
-                break;
-            } else {
-                errno_exit( cam->fd, "VIDIOC_ENUM_FMT" );
-            }
-        }
-
-        if( param->b_verbose )
-            printf( "# %d: %s, %d, %d", i, fmtdesc.description, fmtdesc.flags, fmtdesc.pixelformat );
-
-        switch( fmtdesc.pixelformat )
-        {
-            case v4l2_fourcc('M','J','P','G'):
-            case v4l2_fourcc('J','P','E','G'):
-            case v4l2_fourcc('Y','U','Y','V'):
-            case v4l2_fourcc('Y','U','1','2'):
-            case v4l2_fourcc('R','G','B','1'):
-            case v4l2_fourcc('R','4','4','4'):
-            case v4l2_fourcc('R','G','B','O'):
-            case v4l2_fourcc('R','G','B','P'):
-            case v4l2_fourcc('R','G','B','Q'):
-            case v4l2_fourcc('R','G','B','R'):
-            case v4l2_fourcc('B','G','R','3'):
-            case v4l2_fourcc('R','G','B','3'):
-            case v4l2_fourcc('B','G','R','4'):
-            case v4l2_fourcc('R','G','B','4'):
-                cam->pixelformat = fmtdesc.pixelformat;
-                if( param->b_verbose )
-                    printf( " [selected]" );
-                break;
-        }
-        printf("\n");
-
-        /* this displays the available frame sizes. some cameras do not support
-         * this feature and will break if its used. it will be commented in
-         * when the appropriate checks are done.
-        if( param->b_verbose )
-            printf( "\n\tFrame Sizes:\n" );
-
-        frmsize.pixel_format = fmtdesc.pixelformat;
-        for( j = 0; ; j++ ) {
-            frmsize.index = j;
-            if( xioctl(cam->fd,VIDIOC_ENUM_FRAMESIZES,&frmsize) ) {
-                if( errno == EINVAL ) {
-                    if( param->b_verbose )
-                        printf( "\tDone.\n" );
-                    break;
-                } else {
-                    errno_exit( cam->fd, "VIDIOC_ENUM_FRAMESIZES" );
-                }
-            }
-            if( param->b_verbose )
-                printf( "\t# %d: %dx%d\n", j, frmsize.discrete.width, frmsize.discrete.height );
-        }
-        if( !param->b_verbose && i == 0 ) {
-        fprintf( stderr,"fooooo\n");
-            break;
-        }
-        */
-    }
-
-    if( cam->pixelformat == 0 ) {
-        fprintf( stderr, "I do not support this cameras pixelformat.\n" );
-        return -1;
-    }
-
-    /* set the format */
-    ia_memset( &fmt,0,sizeof(fmt) );
-    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width = param->i_width;
-    fmt.fmt.pix.height = param->i_height;
-    fmt.fmt.pix.field = V4L2_FIELD_NONE;
-
-    if( param->b_verbose )
-    {
-        printf( "Setting the format ...\n" );
-        printf( "width : %d\n",fmt.fmt.pix.width );
-        printf( "height: %d\n",fmt.fmt.pix.height );
-    }
-
-    fmt.fmt.pix.pixelformat = cam->pixelformat;
-    if( xioctl(cam->fd,VIDIOC_S_FMT,&fmt) == -1 )
-        errno_exit( cam->fd,"VIDIOC_S_FMT" );
-
-    /* request buffers */
-    if( param->b_verbose )
-        printf( "Requesting the buffer ...\n" );
-    ia_memset( &reqbuf,0,sizeof(reqbuf) );
-    reqbuf.count = 4;
-    reqbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    reqbuf.memory = V4L2_MEMORY_MMAP;
-
-    if( xioctl(cam->fd,VIDIOC_REQBUFS,&reqbuf) == -1 )
-        errno_exit( cam->fd,"VIDIOC_REQBUFS" );
-
-    if( reqbuf.count < 2 )
-    {
-        if( param->b_verbose )
-            fprintf( stderr,"Insufficient buffer memory on %s\n",param->video_device );
-        return -1;
-    }
-
-    /* mmap buffers */
-    if( param->b_verbose )
-        printf( "Creating the buffers ...\n" );
-
-    cam->buffers = (iaio_cam_buffer*) ia_calloc ( reqbuf.count,sizeof(iaio_cam_buffer) );
-    if( !cam->buffers )
-    {
-        if( param->b_verbose )
-            fprintf( stderr,"Out of memory\n" );
-        return -1;
-    }
-
-    for( cam->i_buffers = 0; cam->i_buffers < reqbuf.count; ++cam->i_buffers )
-    {
-        struct v4l2_buffer buf;
-
-        ia_memset( &buf,0,sizeof(buf) );
-
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index = cam->i_buffers;
-
-        if( xioctl(cam->fd,VIDIOC_QUERYBUF,&buf) == -1 )
-            errno_exit( cam->fd, "VIDIOC_QUERYBUF" );
-
-        cam->buffers[cam->i_buffers].length = buf.length;
-        cam->buffers[cam->i_buffers].start = mmap( NULL,buf.length,
-                PROT_READ | PROT_WRITE, MAP_SHARED,
-                cam->fd,buf.m.offset );
-
-        if( xioctl(cam->fd,VIDIOC_QBUF,&buf) == -1 )
-            errno_exit( cam->fd,"VIDIOC_QBUF" );
-    }
-
-    //FIXME: put the change_control stuff here if there is the option in params!
-    // change_control();
-
-    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
-    if( xioctl(cam->fd,VIDIOC_STREAMON,&type) == -1 )
-        errno_exit( cam->fd,"VIDIOC_STREAMON" );
-
-    cam->capturing = 1;
+    iaio->c = ia_swscale_init( iaio->i_width, iaio->i_height, PIX_FMT_YUYV422 );
+    assert( iaio->c != NULL );
+#else
+    return -1;
+#endif
 
     return 0;
 }
 
-int iaio_cam_close ( iaio_t* iaio )
+void iaio_cam_close ( iaio_t* iaio )
 {
-    enum v4l2_buf_type type;
-    unsigned int i;
-
-    iaio->cam.capturing = 0;
-
-    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    ioctl( iaio->cam.fd,VIDIOC_STREAMOFF,&type );
-
-    /* reset the buffer */
-    for( i = 0; i < (unsigned int)iaio->cam.i_buffers; i++ )
-    {
-        struct v4l2_buffer buf;
-
-        ia_memset( &buf,0,sizeof(buf) );
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index = i;
-        if( xioctl(iaio->cam.fd,VIDIOC_QUERYBUF,&buf) < 0 )
-        {
-            errno_exit( iaio->cam.fd,"VIDIOC_QUERYBUF" );
-            return 0;
-        }
-        munmap( iaio->cam.buffers[i].start, iaio->cam.buffers[i].length );
-    }
-
-    close( iaio->cam.fd );
-
-    return 1;
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
+    v4l2_close( iaio->v4l2 );
+    ia_swscale_close( iaio->c );
+#endif
 }
 
 /* initialize image input file */
@@ -800,12 +470,17 @@ iaio_t* iaio_open( ia_param_t* p )
     /* if cam input */
     if( p->b_vdev )
     {
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
         iaio->input_type = IAIO_CAMERA;
         if( iaio_cam_init(iaio, p) )
         {
             fprintf( stderr, "ERROR: iaio_open(): failed to initialize input file\n" );
             return NULL;
         }
+#else
+        fprintf( stderr, "Video device IO is not supported, recompile with libswscale and v4l2 to gain support.\n" );
+        return NULL;
+#endif
     }
     else
     {
@@ -901,8 +576,10 @@ inline void iaio_close( iaio_t* iaio )
 #endif
     if( iaio->output_type & IAIO_DISPLAY )
         iaio_display_close();
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
     if( iaio->input_type == IAIO_CAMERA )
         iaio_cam_close( iaio );
+#endif
     if( iaio->input_type == IAIO_FILE )
         iaio_file_close( iaio );
 

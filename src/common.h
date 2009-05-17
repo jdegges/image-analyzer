@@ -66,6 +66,7 @@ typedef struct ia_image_t
     char        thumbname[1024];
     uint64_t    i_frame;
     int32_t     i_refcount;
+    uint64_t    i_size;
     ia_pixel_t* pix;
     void*       dib;
     struct ia_image_t* next;
