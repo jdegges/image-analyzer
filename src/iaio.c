@@ -457,7 +457,7 @@ static inline void iaio_display_close( void )
 
 iaio_t* iaio_open( ia_param_t* p )
 {
-    char pattern[21] = "^.+\.([tT][xX][tT])$";
+    char pattern[] = "^.+\\.([tT][xX][tT])$";
     int status;
     regex_t re;
     iaio_t* iaio = malloc( sizeof(iaio_t) );
