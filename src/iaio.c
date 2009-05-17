@@ -462,7 +462,7 @@ int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
     }
     if( iaio->input_type == IAIO_MOVIE ) {
 #ifdef HAVE_FFMPEG
-        if( iaio_ffmpeg_read_frame(iaio->ffio, iaf) < 0 ) {
+        if( ia_ffmpeg_read_frame(iaio->ffio, iaf) < 0 ) {
             fprintf( stderr, "ERROR: iaio_getimage(): couldn't get image from movie file\n" );
             return 1;
         }
@@ -829,7 +829,7 @@ iaio_t* iaio_open( ia_param_t* p )
         {
 #ifdef HAVE_FFMPEG
             iaio->input_type = IAIO_MOVIE;
-            iaio->ffio = iaio_ffmpeg_init( p->input_file );
+            iaio->ffio = ia_ffmpeg_init( p->input_file );
             if( !iaio->ffio ) {
                 fprintf(stderr,"failed to open ffmpeg stuff\n");
                 return NULL;
@@ -897,7 +897,7 @@ inline void iaio_close( iaio_t* iaio )
 {
 #ifdef HAVE_FFMPEG
     if( iaio->input_type == IAIO_MOVIE )
-        iaio_ffmpeg_close( iaio->ffio );
+        ia_ffmpeg_close( iaio->ffio );
 #endif
     if( iaio->output_type & IAIO_DISPLAY )
         iaio_display_close();

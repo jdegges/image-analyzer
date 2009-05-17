@@ -4,11 +4,12 @@
 #include "common.h"
 
 #ifdef HAVE_FFMPEG
-#include <ffmpeg/avcodec.h>
-#include <ffmpeg/avformat.h>
-#include <ffmpeg/swscale.h>
+#include <libavutil/avutil.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
 
-typedef struct iaio_ffmpeg_t {
+typedef struct ia_ffmpeg_t {
     AVFormatContext *pFormatCtx;
     int             videoStream;
     AVCodecContext  *pCodecCtx;
@@ -21,11 +22,11 @@ typedef struct iaio_ffmpeg_t {
     int i_width;
     int i_height;
     int i_size;
-} iaio_ffmpeg_t;
+} ia_ffmpeg_t;
 
-iaio_ffmpeg_t* iaio_ffmpeg_init( const char* file );
-int iaio_ffmpeg_read_frame( iaio_ffmpeg_t* ffio, ia_image_t* iaf );
-void iaio_ffmpeg_close (iaio_ffmpeg_t* ffio);
+ia_ffmpeg_t* ia_ffmpeg_init( const char* file );
+int ia_ffmpeg_read_frame( ia_ffmpeg_t* ffio, ia_image_t* iaf );
+void ia_ffmpeg_close (ia_ffmpeg_t* ffio);
 #endif
 
 #endif

@@ -2,7 +2,7 @@
 
 #ifdef HAVE_FFMPEG
 
-iaio_ffmpeg_t* iaio_ffmpeg_init( const char* input )
+ia_ffmpeg_t* ia_ffmpeg_init( const char* input )
 {
     AVFormatContext *pFormatCtx;
     int i, videoStream;
@@ -14,7 +14,7 @@ iaio_ffmpeg_t* iaio_ffmpeg_init( const char* input )
     int numBytes;
     uint8_t *buffer;
     struct SwsContext *img_convert_ctx;
-    iaio_ffmpeg_t *ffio;
+    ia_ffmpeg_t *ffio;
 
     // Register all formats and codecs
     av_register_all();
@@ -86,7 +86,7 @@ iaio_ffmpeg_t* iaio_ffmpeg_init( const char* input )
         return NULL;
     }
 
-    ffio = malloc (sizeof(iaio_ffmpeg_t));
+    ffio = malloc (sizeof(ia_ffmpeg_t));
     if(!ffio)
         return NULL;
 
@@ -112,7 +112,7 @@ void SaveFrame(AVFrame *pFrame, int width, int height, ia_image_t* iaf) {
         memcpy(iaf->pix+y*pFrame->linesize[0], pFrame->data[0]+(height-y-1)*pFrame->linesize[0], width*3);
 }
 
-int iaio_ffmpeg_read_frame( iaio_ffmpeg_t* ffio, ia_image_t* iaf )
+int ia_ffmpeg_read_frame( ia_ffmpeg_t* ffio, ia_image_t* iaf )
 {
     AVPacket        packet;
     int             frameFinished;
@@ -144,7 +144,7 @@ int iaio_ffmpeg_read_frame( iaio_ffmpeg_t* ffio, ia_image_t* iaf )
     return 0;
 }
 
-void iaio_ffmpeg_close (iaio_ffmpeg_t* ffio)
+void ia_ffmpeg_close (ia_ffmpeg_t* ffio)
 {
     ia_free( ffio->img_convert_ctx );
     // Free the RGB image

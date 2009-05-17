@@ -94,7 +94,7 @@ typedef struct iaio_t
     bool            b_thumbnail;
 
 #ifdef HAVE_FFMPEG
-    iaio_ffmpeg_t*  ffio;
+    ia_ffmpeg_t*  ffio;
 #endif
 } iaio_t;
 
