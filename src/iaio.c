@@ -249,7 +249,7 @@ int iaio_file_probeimage( iaio_t* iaio )
             return 1;
         }
     }
-    if( ia_fgets(iaio->fin.buf, 1024, iaio->fin.filp) == NULL ) {
+    if( ia_fgets(iaio->fin.buf, 1031, iaio->fin.filp) == NULL ) {
         fprintf( stderr, "ERROR: iaio_file_probeimage(): error getting file name off input file\n" );
         return 1;
     }
@@ -286,7 +286,7 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
     FIBITMAP* dib = NULL;
     FREE_IMAGE_FORMAT fif;
 
-    if( ia_fgets(iaio->fin.buf, 1024, iaio->fin.filp) == NULL ) {
+    if( ia_fgets(iaio->fin.buf, 1031, iaio->fin.filp) == NULL ) {
         return 1;
     }
     char* str = ia_strtok( iaio->fin.buf, "\n" );
@@ -398,7 +398,7 @@ inline int iaio_file_init( iaio_t* iaio, ia_param_t* param )
     iaio_file_t* fin = &iaio->fin;
 
     fin->filename = param->input_file;
-    fin->buf = malloc( sizeof(char)*1024 );
+    fin->buf = malloc( sizeof(char)*1031 );
     if( fin->buf == NULL ) {
         fprintf( stderr, "ERROR: iaio_file_init(): couldnt allocate buf\n" );
         return 1;

@@ -81,7 +81,7 @@ void* ia_seq_manage_input( void* vptr )
             }
             ia_pthread_exit( NULL );
         }
-        snprintf( iaf->name, 1024, "%s/image-%010lld.%s", ias->param->output_directory, (long long int)i_frame, ias->param->ext );
+        snprintf( iaf->name, 1031, "%s/image-%010lld.%s", ias->param->output_directory, (long long int)i_frame, ias->param->ext );
         iaf->i_frame = ias->i_frame = i_frame++;
 
         ia_queue_push( ias->input_queue, iaf, iaf->i_frame );
@@ -127,9 +127,9 @@ void* ia_seq_manage_output( void* vptr )
             continue;
         }
 
-        snprintf( iar->name, 1024, "%s/image-%010lld.%s",
+        snprintf( iar->name, 1031, "%s/image-%010lld.%s",
                   ias->param->output_directory, (long long int)i_frame, ias->param->ext );
-        snprintf( iar->thumbname, 1024, "%s/_thumb.image-%010lld.%s",
+        snprintf( iar->thumbname, 1031, "%s/_thumb.image-%010lld.%s",
                   ias->param->output_directory, (long long int)i_frame, ias->param->ext );
         if( iaio_outputimage(ias->iaio, iar) )
         {

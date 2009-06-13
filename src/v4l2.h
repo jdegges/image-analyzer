@@ -17,7 +17,7 @@ typedef struct buffer {
 } buffer;
 
 typedef struct ia_v4l2_t {
-    char                dev_name[1024];
+    char                dev_name[1031];
     io_method           io;
     int                 fd;
     struct buffer *     buffers;

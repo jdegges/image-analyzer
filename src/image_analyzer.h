@@ -27,9 +27,9 @@
 
 typedef struct
 {
-    char input_file[1024];
-    char output_directory[1024];
-    char video_device[1024];
+    char input_file[1031];
+    char output_directory[1031];
+    char video_device[1031];
     char ext[16];
     int filter[20];
 

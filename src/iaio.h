@@ -56,7 +56,7 @@ typedef struct iaio_file_t
     /* stream io */
     FreeImageIO io;
     FILE*       output_stream;
-    char        mime_type[16];
+    char        mime_type[17];
 } iaio_file_t;
 
 typedef struct iaio_t

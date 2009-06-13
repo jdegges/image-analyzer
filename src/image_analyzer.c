@@ -71,10 +71,10 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 {
 	int c;
 
-    memset( p->input_file,0,sizeof(char)*1024 );
-    memset( p->output_directory,0,sizeof(char)*1024 );
+    memset( p->input_file,0,sizeof(char)*1031 );
+    memset( p->output_directory,0,sizeof(char)*1031 );
     memset( p->filter,0,sizeof(int)*15 );
-    strncpy( p->video_device,"/dev/video0",1024 );
+    strncpy( p->video_device,"/dev/video0",1031 );
     strncpy( p->ext,"bmp",16 );
 
     p->b_thumbnail = 0;
@@ -166,11 +166,11 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
 
 		if( (option_index == 0 && c == 0) || (option_index == 0 && c == 'i') )
 		{
-            strncpy( p->input_file, optarg, 1024 );
+            strncpy( p->input_file, optarg, 1031 );
             p->b_vdev = 0;
 		}
 		else if( (option_index == 1 && c == 0) || (option_index == 0 && c == 'o') )
-			strncpy ( p->output_directory, optarg, 1024 );
+			strncpy ( p->output_directory, optarg, 1031 );
 		else if( (option_index == 2 && c == 0 ) || (option_index == 0 && c == 'f') )
 		{
 			char* fltr = NULL;
@@ -222,7 +222,7 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
         else if( (option_index == 9 && c == 0) || (option_index == 0 && c == 'v') )
             p->b_verbose = 1;
         else if( (option_index == 10 && c == 0) || (option_index == 0 && c == 'd') )
-            strncpy( p->video_device, optarg, 1024 );
+            strncpy( p->video_device, optarg, 1031 );
         else if( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
             p->i_maxrefs = strtoul( optarg, NULL, 10 );
         else if( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )

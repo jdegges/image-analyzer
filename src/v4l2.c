@@ -691,7 +691,7 @@ v4l2_open                       (int                    width,
     ia_memset (v, 0, sizeof(ia_v4l2_t));
     v->width    = width;
     v->height   = height;
-    strncpy (v->dev_name, dev_name, 1024);
+    strncpy (v->dev_name, dev_name, 1031);
     v->io       = IO_METHOD_MMAP;
 
     open_device (v);

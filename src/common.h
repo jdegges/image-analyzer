@@ -65,8 +65,8 @@ static const int debug = 0;
 */
 typedef struct ia_image_t
 {
-    char        name[1024];
-    char        thumbname[1024];
+    char        name[1031];
+    char        thumbname[1031];
     uint64_t    i_frame;
     int32_t     i_refcount;
     uint64_t    i_size;
