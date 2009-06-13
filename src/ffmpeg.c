@@ -11,7 +11,6 @@ ia_ffmpeg_t* ia_ffmpeg_init( const char* input )
     AVCodec *pCodec;
     AVFrame *pFrame;
     AVFrame *pFrameRGB;
-    int frameFinished;
     int numBytes;
     uint8_t *buffer;
     struct SwsContext *img_convert_ctx;
@@ -21,12 +20,16 @@ ia_ffmpeg_t* ia_ffmpeg_init( const char* input )
     av_register_all();
 
     // Open video file
-    if(av_open_input_file(&pFormatCtx, input, NULL, 0, NULL)!=0)
+    if(av_open_input_file(&pFormatCtx, input, NULL, 0, NULL)!=0) {
+        fprintf(stderr, "Couldn't open input file: %s\n", input);
         return NULL;
+    }
     
     // Retrieve stream information
-    if(av_find_stream_info(pFormatCtx)<0)
+    if(av_find_stream_info(pFormatCtx)<0) {
+        fprintf(stderr, "Couldn't find stream info\n");
         return NULL;
+    }
 
     // Dump information about file onto standard error
     //dump_format(pFormatCtx, 0, input, 0);
@@ -63,8 +66,10 @@ ia_ffmpeg_t* ia_ffmpeg_init( const char* input )
 
     // Allocate an AVFrame structure
     pFrameRGB=avcodec_alloc_frame();
-    if(pFrameRGB==NULL)
+    if(pFrameRGB==NULL) {
+        fprintf(stderr, "Couldn't alloc an avcodec frame\n");
         return NULL;
+    }
 
     // Determine required buffer size and allocate buffer
     numBytes=avpicture_get_size(PIX_FMT_BGR24, pCodecCtx->width,
@@ -88,8 +93,10 @@ ia_ffmpeg_t* ia_ffmpeg_init( const char* input )
     }
 
     ffio = malloc (sizeof(ia_ffmpeg_t));
-    if(!ffio)
+    if(!ffio) {
+        fprintf(stderr, "Couldn't alloc an ffio object\n");
         return NULL;
+    }
 
     ffio->pFormatCtx = pFormatCtx;
     ffio->videoStream = videoStream;
