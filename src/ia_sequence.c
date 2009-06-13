@@ -146,8 +146,7 @@ void* ia_seq_manage_output( void* vptr )
 /* initialize a new ia_seq */
 ia_seq_t*   ia_seq_open( ia_param_t* p )
 {
-    int i, rc;
-    ia_image_t* iaf;
+    int rc;
 
     /* allocate/initialize sequence object */
     ia_seq_t* s = (ia_seq_t*) ia_malloc( sizeof(ia_seq_t) );

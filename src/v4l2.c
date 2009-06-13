@@ -62,7 +62,7 @@ read_frame          (ia_v4l2_t*             v,
 
     io_method io = v->io;
     int fd = v->fd;
-    int n_buffers = v->n_buffers;
+    unsigned int n_buffers = v->n_buffers;
     struct buffer* buffers = v->buffers;
 
 
@@ -83,7 +83,6 @@ read_frame          (ia_v4l2_t*             v,
                 }
             }
 
-            assert (v->width*v->height*3 <= buffers[0].length);
             ia_memcpy_uint8_to_pixel (iaf->pix, buffers[0].start, buffers[0].length);
 
             break;
@@ -109,9 +108,6 @@ read_frame          (ia_v4l2_t*             v,
                 }
             }
 
-            assert (buf.index < n_buffers);
-
-            assert (buf.bytesused <= v->width*v->height*3);
             iaf->i_size = buf.bytesused;
             ia_memcpy_uint8_to_pixel (iaf->pix, buffers[buf.index].start, buf.bytesused);
 
@@ -146,9 +142,6 @@ read_frame          (ia_v4l2_t*             v,
                     && buf.length == buffers[i].length)
                     break;
 
-            assert (i < n_buffers);
-
-            assert (v->width*v->height*3 <= buf.length);
             ia_memcpy_uint8_to_pixel (iaf->pix, (void*)buf.m.userptr, buf.length);
 
             if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
@@ -231,7 +224,7 @@ start_capturing                 (ia_v4l2_t*             v)
     enum v4l2_buf_type type;
 
     io_method io            = v->io;
-    int n_buffers           = v->n_buffers;
+    unsigned int n_buffers  = v->n_buffers;
     int fd                  = v->fd;
     struct buffer* buffers  = v->buffers;
 
@@ -294,7 +287,7 @@ uninit_device                   (ia_v4l2_t*         v)
 
     io_method io            = v->io;
     struct buffer* buffers  = v->buffers;
-    int n_buffers           = v->n_buffers;
+    unsigned int n_buffers  = v->n_buffers;
 
     switch (io) {
         case IO_METHOD_READ:
@@ -345,7 +338,7 @@ init_mmap           (ia_v4l2_t*             v)
     int fd = v->fd;
     char* dev_name = v->dev_name;
     struct buffer* buffers;
-    int n_buffers;
+    unsigned int n_buffers;
 
     CLEAR (req);
 
@@ -469,8 +462,8 @@ init_device                     (ia_v4l2_t*                 v)
     struct v4l2_frmsizeenum frmsize;
     unsigned int min;
     int i, j;
-    int available_formats[500] = {0};
-    int available_frmsize[500][2] = {0,0};
+    unsigned int available_formats[500] = {0};
+    unsigned int available_frmsize[500][2] = {{0,0}};
 
     int fd          = v->fd;
     char* dev_name  = v->dev_name;
@@ -542,9 +535,9 @@ init_device                     (ia_v4l2_t*                 v)
     CLEAR (fmt);
 
     fmt.type                = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    fmt.fmt.pix.width       = -1; 
-    fmt.fmt.pix.height      = -1;
-    fmt.fmt.pix.pixelformat = -1;
+    fmt.fmt.pix.width       = 0; 
+    fmt.fmt.pix.height      = 0;
+    fmt.fmt.pix.pixelformat = 0;
     fmt.fmt.pix.field       = V4L2_FIELD_NONE;
 
     // discover what pixel formats and frmsizes are supported by the camera 
@@ -605,9 +598,9 @@ init_device                     (ia_v4l2_t*                 v)
     }
 
     /* if no supported formats were found, error out */
-    if (-1 == fmt.fmt.pix.pixelformat ||
-        -1 == fmt.fmt.pix.width ||
-        -1 == fmt.fmt.pix.height)
+    if (0 == fmt.fmt.pix.pixelformat ||
+        0 == fmt.fmt.pix.width ||
+        0 == fmt.fmt.pix.height)
         errno_exit ("VIDIOC_ENUM_FMT");
 
     if (-1 == xioctl (fd, VIDIOC_S_FMT, &fmt)) {

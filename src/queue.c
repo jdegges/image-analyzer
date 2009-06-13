@@ -47,7 +47,6 @@ ia_queue_t* ia_queue_open( size_t size, int life )
 void ia_queue_close( ia_queue_t* q )
 {
     int rc = ia_pthread_mutex_lock( &q->mutex );
-    void* d;
     ia_pthread_error( rc, "ia_queue_close()", "ia_pthread_mutex_lock()" );
     while( q->count ) {
         rc = ia_pthread_mutex_unlock( &q->mutex );
@@ -395,7 +394,6 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
 
 void* ia_queue_pop_item_unlocked( ia_queue_t* q, uint32_t pos )
 {
-    int rc;
     ia_queue_obj_t* obj;
     void* data;
 
