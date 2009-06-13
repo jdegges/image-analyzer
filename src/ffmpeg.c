@@ -1,3 +1,4 @@
+#include <libavcodec/avcodec.h>
 #include "ffmpeg.h"
 
 #ifdef HAVE_FFMPEG
@@ -122,9 +123,15 @@ int ia_ffmpeg_read_frame( ia_ffmpeg_t* ffio, ia_image_t* iaf )
         // Is this a packet from the video stream?
         if(packet.stream_index==ffio->videoStream) {
             // Decode video frame
-            avcodec_decode_video(ffio->pCodecCtx, ffio->pFrame, &frameFinished,
-                                 packet.data, packet.size);
-
+#if LIBAVCODEC_VERSION_MAJOR <= 52 &&   \
+    LIBAVCODEC_VERSION_MINOR <= 30 &&   \
+    LIBAVCODEC_VERSION_MICRO <  2
+                avcodec_decode_video(ffio->pCodecCtx, ffio->pFrame, &frameFinished,
+                                     packet.data, packet.size);
+#else
+                avcodec_decode_video2(ffio->pCodecCtx, ffio->pFrame, &frameFinished,
+                                      &packet);
+#endif
             // Did we get a video frame?
             if(frameFinished) {
                 // Convert the image from its native format to RGB
