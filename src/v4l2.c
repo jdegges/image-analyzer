@@ -548,8 +548,17 @@ init_device                     (ia_v4l2_t*                 v)
         fmtdesc.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         fmtdesc.index = i;
 
-        if (-1 == xioctl (fd, VIDIOC_ENUM_FMT, &fmtdesc))
-            break;
+        // if enum_fmt not supported, use YUYV and the specified dimensions
+        if (-1 == xioctl (fd, VIDIOC_ENUM_FMT, &fmtdesc)) {
+            if (errno == EINVAL) {
+                available_frmsize[0][0] = width;
+                available_frmsize[0][1] = height;
+                available_formats[0]    = v4l2_fourcc('Y','U','Y','V');
+                break;
+            } else {
+                errno_exit("VIDIOC_ENUM_FMT");
+            }
+        }
 
         pf = ia_convert_format (fmtdesc.pixelformat, IA_PIX_FMT_V4L2);
         if (-1 != pf) {
