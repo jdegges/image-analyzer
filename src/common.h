@@ -153,48 +153,130 @@ static inline ia_pixel_format ia_convert_format( int pix_fmt, ia_pixel_format_ty
 #ifdef HAVE_V4L2
     if( type == IA_PIX_FMT_V4L2 ) {
         switch( pix_fmt ) {
+#ifdef V4L2_PIX_FMT_RGB332
             case V4L2_PIX_FMT_RGB332:   return IA_PIX_FMT_RGB32;
+#endif
+#ifdef V4L2_PIX_FMT_RGB444
             case V4L2_PIX_FMT_RGB444:   return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_RGB555
             case V4L2_PIX_FMT_RGB555:   return IA_PIX_FMT_RGB555;
+#endif
+#ifdef V4L2_PIX_FMT_RGB565
             case V4L2_PIX_FMT_RGB565:   return IA_PIX_FMT_RGB565;
+#endif
+#ifdef V4L2_PIX_FMT_RGB555X
             case V4L2_PIX_FMT_RGB555X:  return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_RGB565X
             case V4L2_PIX_FMT_RGB565X:  return IA_PIX_FMT_BGR565;
+#endif
             case V4L2_PIX_FMT_BGR24:    return IA_PIX_FMT_BGR24;
+#ifdef V4L2_PIX_FMT_RGB24
             case V4L2_PIX_FMT_RGB24:    return IA_PIX_FMT_RGB24;
+#endif
+#ifdef V4L2_PIX_FMT_BGR32
             case V4L2_PIX_FMT_BGR32:    return IA_PIX_FMT_BGR32;
+#endif
+#ifdef V4L2_PIX_FMT_RGB32
             case V4L2_PIX_FMT_RGB32:    return IA_PIX_FMT_RGB32;
+#endif
+#ifdef V4L2_PIX_FMT_GREY
             case V4L2_PIX_FMT_GREY:     return IA_PIX_FMT_GRAY8;
+#endif
+#ifdef V4L2_PIX_FMT_Y16
             case V4L2_PIX_FMT_Y16:      return IA_PIX_FMT_GRAY16LE;
+#endif
+#ifdef V4L2_PIX_FMT_PAL8
             case V4L2_PIX_FMT_PAL8:     return IA_PIX_FMT_PAL8;
+#endif
+#ifdef V4L2_PIX_FMT_YVU410
             case V4L2_PIX_FMT_YVU410:   return IA_PIX_FMT_YUV410P;
+#endif
+#ifdef V4L2_PIX_FMT_YVU420
             case V4L2_PIX_FMT_YVU420:   return IA_PIX_FMT_YUV420P;
+#endif
+#ifdef V4L2_PIX_FMT_YUYV
             case V4L2_PIX_FMT_YUYV:     return IA_PIX_FMT_YUYV422;
+#endif
+#ifdef V4L2_PIX_FMT_UYVY
             case V4L2_PIX_FMT_UYVY:     return IA_PIX_FMT_UYVY422;
+#endif
+#ifdef V4L2_PIX_FMT_YUV422P
             case V4L2_PIX_FMT_YUV422P:  return IA_PIX_FMT_YUV422P;
+#endif
+#ifdef V4L2_PIX_FMT_YUV411P
             case V4L2_PIX_FMT_YUV411P:  return IA_PIX_FMT_YUV411P;
+#endif
+#ifdef V4L2_PIX_FMT_Y41P
             case V4L2_PIX_FMT_Y41P:     return IA_PIX_FMT_UYYVYY411;
+#endif
+#ifdef V4L2_PIX_FMT_YUV444
             case V4L2_PIX_FMT_YUV444:   return IA_PIX_FMT_YUV444P;
+#endif
+#ifdef V4L2_PIX_FMT_YUV555
             case V4L2_PIX_FMT_YUV555:   return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_YUV565
             case V4L2_PIX_FMT_YUV565:   return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_YUV32
             case V4L2_PIX_FMT_YUV32:    return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_NV12
             case V4L2_PIX_FMT_NV12:     return IA_PIX_FMT_NV12;
+#endif
+#ifdef V4L2_PIX_FMT_NV21
             case V4L2_PIX_FMT_NV21:     return IA_PIX_FMT_NV21;
+#endif
+#ifdef V4L2_PIX_FMT_YUV410
             case V4L2_PIX_FMT_YUV410:   return IA_PIX_FMT_YUV410P;
+#endif
+#ifdef V4L2_PIX_FMT_YUV420
             case V4L2_PIX_FMT_YUV420:   return IA_PIX_FMT_YUV420P;
+#endif
+#ifdef V4L2_PIX_FMT_YYUV
             case V4L2_PIX_FMT_YYUV:     return IA_PIX_FMT_UYVY422;
+#endif
+#ifdef V4L2_PIX_FMT_HI240
             case V4L2_PIX_FMT_HI240:    return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_HM12
             case V4L2_PIX_FMT_HM12:     return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_SBGGR8
             case V4L2_PIX_FMT_SBGGR8:   return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_SBGGR16
             case V4L2_PIX_FMT_SBGGR16:  return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_MJPEG
             case V4L2_PIX_FMT_MJPEG:    return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_JPEG
             case V4L2_PIX_FMT_JPEG:     return IA_PIX_FMT_YUVJ444P;
+#endif
+#ifdef V4L2_PIX_FMT_DV
             case V4L2_PIX_FMT_DV:       return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_MPEG
             case V4L2_PIX_FMT_MPEG:     return IA_PIX_FMT_VDPAU_MPEG1;
+#endif
+#ifdef V4L2_PIX_FMT_WNVA
             case V4L2_PIX_FMT_WNVA:     return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_SN9C10X
             case V4L2_PIX_FMT_SN9C10X:  return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_PWC1
             case V4L2_PIX_FMT_PWC1:     return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_PWC2
             case V4L2_PIX_FMT_PWC2:     return IA_PIX_FMT_NONE;
+#endif
+#ifdef V4L2_PIX_FMT_ET61X251
             case V4L2_PIX_FMT_ET61X251: return IA_PIX_FMT_NONE;
+#endif
             default:                    return IA_PIX_FMT_NONE;
         }
     }
