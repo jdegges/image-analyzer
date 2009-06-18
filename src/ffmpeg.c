@@ -1,4 +1,3 @@
-#include <libavcodec/avcodec.h>
 #include "ffmpeg.h"
 
 #ifdef HAVE_FFMPEG
