@@ -3,8 +3,6 @@
 
 #include "common.h"
 
-#ifdef HAVE_V4L2
-
 typedef enum {
     IO_METHOD_READ,
     IO_METHOD_MMAP,
@@ -25,6 +23,8 @@ typedef struct ia_v4l2_t {
     int                 width;
     int                 height;
 } ia_v4l2_t;
+
+#ifdef HAVE_V4L2
 
 ia_image_t*
 v4l2_readimage (ia_v4l2_t* v, ia_image_t* im);
