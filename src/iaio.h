@@ -32,6 +32,9 @@
 #ifdef HAVE_FFMPEG
 #include "ffmpeg.h"
 #endif
+#ifdef HAVE_V4L
+#include "v4l.h"
+#endif
 #ifdef HAVE_V4L2
 #include "v4l2.h"
 #endif
@@ -78,6 +81,9 @@ typedef struct iaio_t
 
 #ifdef HAVE_FFMPEG
     ia_ffmpeg_t*    ffio;
+#endif
+#ifdef HAVE_V4L
+    ia_v4l_t*       v4l;
 #endif
 #ifdef HAVE_V4L2
     ia_v4l2_t*      v4l2;

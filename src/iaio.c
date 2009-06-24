@@ -318,15 +318,25 @@ int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
  */
 int iaio_cam_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
-#if HAVE_V4L2 && HAVE_LIBSWSCALE
-    iaf = v4l2_readimage( iaio->v4l2, iaf );
-    if( !iaf ) {
+#if HAVE_V4L2
+    if( iaio->v4l2 && !(iaf = v4l2_readimage(iaio->v4l2, iaf)) ) {
         return -1;
     }
-
-    ia_swscale( iaio->c, iaf, iaio->i_width, iaio->i_height );
 #endif
-    return 0;
+
+#if HAVE_V4L
+    if( iaio->v4l && !(iaf = v4l_readimage(iaio->v4l, iaf)) ) {
+        return -1;
+    }
+#endif
+
+#if HAVE_LIBSWSCALE
+    if( iaio->c && !ia_swscale(iaio->c, iaf, iaio->i_width, iaio->i_height) ) {
+        return 0;
+    }
+#endif
+
+    return -1;
 }
 
 /*
@@ -367,28 +377,41 @@ int iaio_getimage( iaio_t* iaio, ia_image_t* iaf )
  */
 int iaio_cam_init ( iaio_t* iaio, ia_param_t* param )
 {
-#if HAVE_V4L2 && HAVE_LIBSWSCALE
     iaio->i_width = param->i_width;
     iaio->i_height = param->i_height;
 
-    iaio->v4l2 = v4l2_open( iaio->i_width, iaio->i_height, param->video_device );
-    if( !iaio->v4l2 )
-        return -1;
-
-    iaio->c = ia_swscale_init( iaio->i_width, iaio->i_height, PIX_FMT_YUYV422 );
-    assert( iaio->c != NULL );
-#else
-    return -1;
+#if HAVE_V4L2 && HAVE_LIBSWSCALE
+    if( (iaio->v4l2 = v4l2_open(iaio->i_width, iaio->i_height, param->video_device)) &&
+        (iaio->c = ia_swscale_init(iaio->i_width, iaio->i_height, PIX_FMT_YUYV422)) ) {
+        return 0;
+    }
 #endif
 
-    return 0;
+#if HAVE_V4L && HAVE_LIBSWSCALE
+    if( (iaio->v4l = v4l_open(iaio->i_width, iaio->i_height, param->video_device)) &&
+        (iaio->c = ia_swscale_init(iaio->i_width, iaio->i_height, iaio->v4l->ia_pix_fmt)) ) {
+        return 0;
+    }
+#endif
+
+    return -1;
 }
 
 void iaio_cam_close ( iaio_t* iaio )
 {
-#if HAVE_V4L2 && HAVE_LIBSWSCALE
-    v4l2_close( iaio->v4l2 );
-    ia_swscale_close( iaio->c );
+#if HAVE_V4L2 
+    if( iaio->v4l2 )
+        v4l2_close( iaio->v4l2 );
+#endif
+
+#if HAVE_V4L
+    if( iaio->v4l )
+        v4l_close( iaio->v4l );
+#endif
+
+#if HAVE_LIBSWSCALE
+    if( iaio->c )
+        ia_swscale_close( iaio->c );
 #endif
 }
 
@@ -460,7 +483,7 @@ iaio_t* iaio_open( ia_param_t* p )
     char pattern[] = "^.+\\.([tT][xX][tT])$";
     int status;
     regex_t re;
-    iaio_t* iaio = malloc( sizeof(iaio_t) );
+    iaio_t* iaio = calloc( 1, sizeof(iaio_t) );
 
     iaio->fin.filp = NULL;
     iaio->fin.buf = NULL;
@@ -470,7 +493,7 @@ iaio_t* iaio_open( ia_param_t* p )
     /* if cam input */
     if( p->b_vdev )
     {
-#if HAVE_V4L2 && HAVE_LIBSWSCALE
+#if (HAVE_V4L || HAVE_V4L2) && HAVE_LIBSWSCALE
         iaio->input_type = IAIO_CAMERA;
         if( iaio_cam_init(iaio, p) )
         {
@@ -576,7 +599,7 @@ inline void iaio_close( iaio_t* iaio )
 #endif
     if( iaio->output_type & IAIO_DISPLAY )
         iaio_display_close();
-#if HAVE_V4L2 && HAVE_LIBSWSCALE
+#if (HAVE_V4L || HAVE_V4L2) && HAVE_LIBSWSCALE
     if( iaio->input_type == IAIO_CAMERA )
         iaio_cam_close( iaio );
 #endif

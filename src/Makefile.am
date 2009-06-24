@@ -16,6 +16,8 @@ ia_SOURCES =				\
 	queue.h					\
 	swscale.c				\
 	swscale.h				\
+	v4l.c					\
+	v4l.h					\
 	v4l2.c					\
 	v4l2.h					\
 	filters/blur.c			\

@@ -28,6 +28,11 @@ AC_ARG_WITH([ffmpeg],
         [adds video input support using ffmpeg and swscale libraries @<:@default=check@:>@])],
     [],
     [with_ffmpeg=check])
+AC_ARG_WITH([v4l],
+    [AS_HELP_STRING([--width-v4l],
+        [allows capture from v4l compliant cameras @<:@default=check@:>@])],
+    [],
+    [with_v4l=check])
 AC_ARG_WITH([v4l2],
     [AS_HELP_STRING([--with-v4l2],
         [allows capture from v4l2 compliant cameras @<:@default=check@:>@])],
@@ -58,6 +63,8 @@ AS_IF([test "x$with_opencv" != xno],
     [AC_CHECK_HEADERS([opencv/cv.h opencv/highgui.h opencv/cv.h opencv/cxcore.h])])
 AS_IF([test "x$with_ffmpeg" != xno],
     [AC_CHECK_HEADERS([libavcodec/avcodec.h libavformat/avformat.h libswscale/swscale.h])])
+AS_IF([test "x$with_v4l" != xno],
+    [AC_CHECK_HEADERS([linux/videodev.h])])
 AS_IF([test "x$with_v4l2" != xno],
     [AC_CHECK_HEADERS([linux/videodev2.h])])
 

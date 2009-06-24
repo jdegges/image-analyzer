@@ -53,6 +53,11 @@ static const int debug = 0;
 #include <linux/videodev2.h>
 #endif
 
+#ifdef HAVE_LINUX_VIDEODEV_H
+#define HAVE_V4L 1
+#include <linux/videodev.h>
+#endif
+
 /* ia_image_t: image data structure
  * i_frame: position of this frame in image stream
  * pix    : pixel data
@@ -374,6 +379,16 @@ static inline void* ia_memcpy_pixel( void* d, const void* s, size_t n )
 #define ia_fopen fopen
 #define ia_fclose fclose
 #define ia_abs fabs
+#define ia_mmap mmap
+#define ia_stat stat
+#define ia_fprintf fprintf
+#define ia_strerror strerror
+#define ia_exit exit
+#define ia_munmap munmap
+#define ia_ioctl ioctl
+#define ia_read read
+#define ia_usleep usleep
+#define ia_open open
 
 static inline int clip_uint8( int v )
 {
