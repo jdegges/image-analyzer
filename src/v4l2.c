@@ -217,7 +217,7 @@ stop_capturing                  (ia_v4l2_t*             v)
     }
 }
 
-static void
+int
 start_capturing                 (ia_v4l2_t*             v)
 {
     unsigned int i;
@@ -278,6 +278,8 @@ start_capturing                 (ia_v4l2_t*             v)
 
             break;
     }
+
+    return 0;
 }
 
 static void
@@ -451,7 +453,7 @@ init_userp          (ia_v4l2_t*                 v,
     v->n_buffers = n_buffers;
 }
 
-static void
+int
 init_device                     (ia_v4l2_t*                 v)
 {
     struct v4l2_capability cap;
@@ -475,7 +477,7 @@ init_device                     (ia_v4l2_t*                 v)
         if (EINVAL == errno) {
             fprintf (stderr, "%s is no V4L2 device\n",
                      dev_name);
-            exit (EXIT_FAILURE);
+            return -1;
         } else {
             errno_exit ("VIDIOC_QUERYCAP");
         }
@@ -484,7 +486,7 @@ init_device                     (ia_v4l2_t*                 v)
     if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
         fprintf (stderr, "%s is no video capture device\n",
                  dev_name);
-        exit (EXIT_FAILURE);
+        return -1;
     }
 
     if (io == IO_METHOD_MMAP || io == IO_METHOD_USERPTR) {
@@ -501,7 +503,7 @@ init_device                     (ia_v4l2_t*                 v)
         if (!(cap.capabilities & V4L2_CAP_READWRITE)) {
             fprintf (stderr, "%s does not support read i/o\n",
                      dev_name);
-            exit (EXIT_FAILURE);
+            return -1;
         }
     }
 
@@ -641,6 +643,7 @@ init_device                     (ia_v4l2_t*                 v)
 
     v->width = fmt.fmt.pix.width;
     v->height = fmt.fmt.pix.height;
+    return 0;
 }
 
 static void
@@ -653,7 +656,7 @@ close_device                    (ia_v4l2_t*             v)
     fd = -1;
 }
 
-static void
+int
 open_device                     (ia_v4l2_t*             v)
 {
     struct stat st;
@@ -663,12 +666,12 @@ open_device                     (ia_v4l2_t*             v)
     if (-1 == stat (dev_name, &st)) {
         fprintf (stderr, "Cannot identify '%s': %d, %s\n",
                  dev_name, errno, strerror (errno));
-        exit (EXIT_FAILURE);
+        return -1;
     }
 
     if (!S_ISCHR (st.st_mode)) {
         fprintf (stderr, "%s is no device\n", dev_name);
-        exit (EXIT_FAILURE);
+        return -1;
     }
 
     fd = open (dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
@@ -676,10 +679,11 @@ open_device                     (ia_v4l2_t*             v)
     if (-1 == fd) {
         fprintf (stderr, "Cannot open '%s': %d, %s\n",
         dev_name, errno, strerror (errno));
-        exit (EXIT_FAILURE);
+        return -1;
     }
 
     v->fd = fd;
+    return 0;
 }
 
 ia_v4l2_t*
@@ -696,9 +700,20 @@ v4l2_open                       (int                    width,
     strncpy (v->dev_name, dev_name, 1031);
     v->io       = IO_METHOD_MMAP;
 
-    open_device (v);
-    init_device (v);
-    start_capturing (v);
+    if (-1 == open_device (v)) {
+        return NULL;
+    }
+
+    if (-1 == init_device (v)) {
+        close_device (v);
+        return NULL;
+    }
+
+    if (-1 == start_capturing (v)) {
+        uninit_device (v);
+        close_device (v);
+        return NULL;
+    }
     return v;
 }
 
