@@ -68,7 +68,7 @@ read_frame          (ia_v4l2_t*             v,
 
     switch (io) {
         case IO_METHOD_READ:
-            if (-1 == read (fd, buffers[0].start, buffers[0].length)) {
+            if (-1 == read (fd, iaf->pix, buffers[0].length)) {
                 switch (errno) {
                     case EAGAIN:
                         return 0;
@@ -82,8 +82,6 @@ read_frame          (ia_v4l2_t*             v,
                         errno_exit ("read");
                 }
             }
-
-            ia_memcpy_uint8_to_pixel (iaf->pix, buffers[0].start, buffers[0].length);
 
             break;
 
