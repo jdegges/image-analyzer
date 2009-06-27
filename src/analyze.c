@@ -371,14 +371,14 @@ int analyze( ia_param_t* p )
         iax->bufno = i;
 
         ia_error( "analyze: creating process thread with bufno %d\n", i );
-        rc = ia_pthread_create( &my_threads[i], &ias->attr, &analyze_exec, (void*) iax );
-        ia_pthread_error( rc, "analyze()", "ia_pthread_create()" );
+        if( 0 != (rc = ia_pthread_create( &my_threads[i], &ias->attr, &analyze_exec, (void*) iax )) )
+            ia_pthread_error( rc, "analyze()", "ia_pthread_create()" );
     }
 
     for( i = 0; i < ias->param->i_threads; i++ )
     {
-        rc = ia_pthread_join( my_threads[i], &status );
-        ia_pthread_error( rc, "analyze()", "pthread_join()" );
+        if( 0 != (rc = ia_pthread_join( my_threads[i], &status )) )
+            ia_pthread_error( rc, "analyze()", "pthread_join()" );
     }
 
     analyze_deinit( ias );

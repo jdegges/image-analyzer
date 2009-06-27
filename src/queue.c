@@ -46,12 +46,13 @@ ia_queue_t* ia_queue_open( size_t size, int life )
 
 void ia_queue_close( ia_queue_t* q )
 {
-    int rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_close()", "ia_pthread_mutex_lock()" );
+    int rc;
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_close()", "ia_pthread_mutex_lock()" );
     while( q->count ) {
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_close()", "ia_pthread_mutex_unlock()" );
-        ia_queue_pop( q );
+        if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_close()", "ia_pthread_mutex_unlock()" );
+        ia_image_free( ia_queue_pop( q ) );
     }
     ia_pthread_mutex_unlock( &q->mutex );
     ia_pthread_mutex_destroy( &q->mutex );
@@ -89,15 +90,15 @@ int _ia_queue_push( ia_queue_t* q, void* data, uint32_t pos, ia_queue_pushtype_t
         return 1;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_lock()" );
     while( q->count >= q->size ) {
         if( pos == q->waiter_pos
             || pt == QUEUE_SHOVE || pt == QUEUE_SSORT ) {
             break;
         }
-        rc = ia_pthread_cond_wait( &q->cond_nonfull, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
+        if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonfull, &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_cond_wait()" );
     }
 
     obj = ia_queue_create_obj( data );
@@ -153,12 +154,12 @@ int _ia_queue_push( ia_queue_t* q, void* data, uint32_t pos, ia_queue_pushtype_t
     q->count++;
 
     // if someone is waiting to pop, send signal
-    rc = ia_pthread_cond_signal( &q->cond_nonempty );
-    ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonempty )) )
+        ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_signal()" );
 
     // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_push()", "ia_pthread_mutex_unlock()" );
 
     return 0;
 }
@@ -196,11 +197,11 @@ void* ia_queue_pop( ia_queue_t* q )
     void* data;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
     while( q->count == 0 ) {
-        rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
+        if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_wait()" );
     }
     assert( q->count > 0 );
 
@@ -211,12 +212,12 @@ void* ia_queue_pop( ia_queue_t* q )
     q->count--;
 
     // if someone is waiting to push, send signal
-    rc = ia_pthread_cond_signal( &q->cond_nonfull );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_signal()" );
 
     // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
 
     // clean up queue object
     ia_queue_destroy_obj( obj );
@@ -231,11 +232,11 @@ void* ia_queue_pek( ia_queue_t* q, uint32_t pos )
     ia_queue_obj_t* obj;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_lock()" );
     while( q->count == 0 ) {
-        rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_cond_wait()" );
+        if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_cond_wait()" );
     }
 
     for( ;; ) {
@@ -252,14 +253,14 @@ void* ia_queue_pek( ia_queue_t* q, uint32_t pos )
         if( obj != NULL ) {
             break;
         } else {
-            rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
-            ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_cond_wait()" );
+            if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+                ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_cond_wait()" );
         }
     }
 
     // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pek()", "ia_pthread_mutex_unlock()" );
 
     return obj->data;
 }
@@ -270,8 +271,8 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
     ia_queue_obj_t* obj;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_lock()" );
 
 
     // find associated object
@@ -284,12 +285,12 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
 
     if( obj == NULL ) {
         // wake up the threads waiting to push to this queue
-        rc = ia_pthread_cond_signal( &q->cond_nonfull );
-        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
+        if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+            ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
 
         // unlock queue
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
+        if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
         return;
     }
     obj->life--;
@@ -309,12 +310,12 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
     }
 
     // wake up the threads waiting to push to this queue
-    rc = ia_pthread_cond_signal( &q->cond_nonfull );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
 
     // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_mutex_unlock()" );
 }
 
 /* returns unlocked image from queue */
@@ -325,14 +326,14 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
     void* data;
 
     // get lock on queue
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_lock()" );
 
     q->waiter_pos = pos;
 
     while( q->count == 0 ) {
-        rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_wait()" );
+        if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_wait()" );
     }
     assert( q->count > 0 );
 
@@ -346,11 +347,11 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
 
     // if frame wasnt on list -> return null
     if( obj == NULL ) {
-        rc = ia_pthread_cond_signal( &q->cond_nonfull );
-        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
+        if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
 
-        rc = ia_pthread_mutex_unlock( &q->mutex );
-        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
+        if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
 
         return NULL;
     }
@@ -380,12 +381,12 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
     q->count--;
 
     // if someone is waiting to push, send signal
-    rc = ia_pthread_cond_signal( &q->cond_nonfull );
-    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
 
     // unlock queue
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
 
     ia_queue_destroy_obj( obj );
 
@@ -442,13 +443,13 @@ int ia_queue_is_full( ia_queue_t* q )
 {
     int rc, status;
 
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
 
     status = q->count >= q->size;
 
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
 
     return status;
 }
@@ -457,13 +458,13 @@ int ia_queue_is_empty( ia_queue_t* q )
 {
     int rc, status;
 
-    rc = ia_pthread_mutex_lock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
+    if( 0 != (rc = ia_pthread_mutex_lock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_lock()" );
 
     status = q->count == 0;
 
-    rc = ia_pthread_mutex_unlock( &q->mutex );
-    ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
+    if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_mutex_unlock()" );
 
     return status;
 }

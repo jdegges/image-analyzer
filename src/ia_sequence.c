@@ -186,11 +186,11 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     pthread_attr_init( &s->attr );
     pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
 
-    rc = ia_pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s );
-    ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
+    if( 0 != (rc = ia_pthread_create( &s->tio[0], &s->attr, &ia_seq_manage_input, (void*) s )) )
+        ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
 
-    rc = ia_pthread_create( &s->tio[1], &s->attr, &ia_seq_manage_output, (void*) s );
-    ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
+    if( 0 != (rc = ia_pthread_create( &s->tio[1], &s->attr, &ia_seq_manage_output, (void*) s )) )
+        ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_create()" );
 
     return s;
 }
@@ -200,11 +200,11 @@ inline void ia_seq_close( ia_seq_t* s )
     void* status;
     int rc;
 
-    rc = ia_pthread_join( s->tio[0], &status );
-    ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
+    if( 0 != (rc = ia_pthread_join( s->tio[0], &status )) )
+        ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
 
-    rc = ia_pthread_join( s->tio[1], &status );
-    ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
+    if( 0 != (rc = ia_pthread_join( s->tio[1], &status )) )
+        ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
 
     pthread_attr_destroy( &s->attr );
 
