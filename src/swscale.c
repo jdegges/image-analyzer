@@ -43,6 +43,8 @@ int ia_swscale( ia_swscale_t* c, ia_image_t* iaf, int32_t width,
     pthread_cond_destroy( &iar->cond_ro );
     pthread_cond_destroy( &iar->cond_rw );
 
+    ia_free( iar );
+
     return 0;
 }
 
