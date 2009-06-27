@@ -25,11 +25,10 @@
 
 ia_image_t* ia_image_create( size_t width, size_t height )
 {
-    ia_image_t* iaf = malloc( sizeof(ia_image_t) );
+    ia_image_t* iaf = calloc( 1, sizeof(ia_image_t) );
 
     if( iaf == NULL )
         return NULL;
-    ia_memset( iaf, 0, sizeof(ia_image_t) );
 
     iaf->dib = FreeImage_Allocate( width, height, 24,
                               0, 0, 0 );
