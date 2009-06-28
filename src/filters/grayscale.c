@@ -33,11 +33,11 @@ inline void grayscale_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iai
         for( j = s->param->i_width; j--; )
         {
             int pix;
-            double gray = 0.30 * iaf->pix[offset(s->param->i_width,j,i,0)]
-                        + 0.59 * iaf->pix[offset(s->param->i_width,j,i,1)]
-                        + 0.11 * iaf->pix[offset(s->param->i_width,j,i,2)];
+            double gray = 0.30 * iaf->pix[offset(iaf->i_pitch,j,i,0)]
+                        + 0.59 * iaf->pix[offset(iaf->i_pitch,j,i,1)]
+                        + 0.11 * iaf->pix[offset(iaf->i_pitch,j,i,2)];
             for( pix = 3; pix--; )
-                iar->pix[offset(s->param->i_width,j,i,pix)] = gray;
+                iar->pix[offset(iaf->i_pitch,j,i,pix)] = gray;
         }
     }
     fp = fp;

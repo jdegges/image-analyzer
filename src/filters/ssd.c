@@ -33,7 +33,7 @@ inline void ssd_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_
     {
         for( j = 0; j < s->param->i_width; j++ )
         {
-            const int cr = offset(s->param->i_width,j,i,0);
+            const int cr = offset(iar->i_pitch,j,i,0);
             const int cg = cr + 1;
             const int cb = cg + 1;
 
@@ -52,7 +52,7 @@ inline void ssd_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_
             {
                 for( k = j - s->param->i_mb_size/2; k <= j + s->param->i_mb_size/2; k++ )
                 {
-                    const int lr = offset( s->param->i_width,k,h,0 );
+                    const int lr = offset( iar->i_pitch,k,h,0 );
                     const int lg = lr + 1;
                     const int lb = lg + 1;
 

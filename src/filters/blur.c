@@ -70,7 +70,7 @@ inline void blur_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia
                             || j+sj < 0 || i+si < 0 )
                             color = 0;
                         else
-                            color = iaf->pix[offset(s->param->i_width,j+sj,i+si,pix)];
+                            color = iaf->pix[offset(iaf->i_pitch,j+sj,i+si,pix)];
                         sum += kernel[bs*sj+si] * color;
                     }
                 }
@@ -78,7 +78,7 @@ inline void blur_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia
                 {
                     min = sum < min ? sum : min;
                     max = sum > max ? sum : max;
-                    iar->pix[offset(s->param->i_width,j+br,i+br,pix)] = sum;
+                    iar->pix[offset(iaf->i_pitch,j+br,i+br,pix)] = sum;
                 }
             }
         }

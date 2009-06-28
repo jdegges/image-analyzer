@@ -67,7 +67,7 @@ static const char FILTERS[][30] = {
 
 static inline int offset( int w, int x, int y, int p )
 {
-    return w*3*y + x*3+p;
+    return w*y + x*3+p;
 }
 
 #define O( y,x ) (s->param->i_width*3*y + x*3)

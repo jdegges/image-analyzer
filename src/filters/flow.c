@@ -43,7 +43,7 @@ inline void flow_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia
 
             if ( i == 0 || j == 0 || j == s->param->i_width-1 || i == s->param->i_height-1 )
             {
-                memset( &iar->pix[offset(s->param->i_width,j,i,0)], 0, sizeof(ia_pixel_t)*3 );
+                memset( &iar->pix[offset(iar->i_pitch,j,i,0)], 0, sizeof(ia_pixel_t)*3 );
                 continue;
             }
 
@@ -52,18 +52,18 @@ inline void flow_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia
             {
                 for( k = j-1; k < j+1; k++ )
                 {
-                    dzr += (iaim[2]->pix[offset(s->param->i_width,k,h,0)]
-                         - iaim[0]->pix[offset(s->param->i_width,k,h,0)]);
-                    dzg += (iaim[2]->pix[offset(s->param->i_width,k,h,1)]
-                         - iaim[0]->pix[offset(s->param->i_width,k,h,1)]);
-                    dzb += (iaim[2]->pix[offset(s->param->i_width,k,h,2)]
-                         - iaim[0]->pix[offset(s->param->i_width,k,h,2)]);
+                    dzr += (iaim[2]->pix[offset(iar->i_pitch,k,h,0)]
+                         - iaim[0]->pix[offset(iar->i_pitch,k,h,0)]);
+                    dzg += (iaim[2]->pix[offset(iar->i_pitch,k,h,1)]
+                         - iaim[0]->pix[offset(iar->i_pitch,k,h,1)]);
+                    dzb += (iaim[2]->pix[offset(iar->i_pitch,k,h,2)]
+                         - iaim[0]->pix[offset(iar->i_pitch,k,h,2)]);
                 }
             }
 
-            iar->pix[offset(s->param->i_width,j,i,0)] = ( dzr - lmin ) * op;
-            iar->pix[offset(s->param->i_width,j,i,1)] = ( dzg - lmin ) * op;
-            iar->pix[offset(s->param->i_width,j,i,2)] = ( dzb - lmin ) * op;
+            iar->pix[offset(iar->i_pitch,j,i,0)] = ( dzr - lmin ) * op;
+            iar->pix[offset(iar->i_pitch,j,i,1)] = ( dzg - lmin ) * op;
+            iar->pix[offset(iar->i_pitch,j,i,2)] = ( dzb - lmin ) * op;
         }
     }
     fp = fp;

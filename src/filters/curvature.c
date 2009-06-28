@@ -36,43 +36,43 @@ inline void curvature_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iai
         {
             if( i == 0 || j == 0 || j == s->param->i_width-1 || i == s->param->i_height-1 )
             {
-                iar->pix[offset(s->param->i_width,j,i,0)] =
-                iar->pix[offset(s->param->i_width,j,i,1)] =
-                iar->pix[offset(s->param->i_width,j,i,2)] = 0;
+                iar->pix[offset(iaf->i_pitch,j,i,0)] =
+                iar->pix[offset(iaf->i_pitch,j,i,1)] =
+                iar->pix[offset(iaf->i_pitch,j,i,2)] = 0;
                 continue;
             }
 
-            kr = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,0)] - iaf->pix[offset(s->param->i_width,j-1,i  ,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,0)] - iaf->pix[offset(s->param->i_width,j-1,i+1,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,0)] - iaf->pix[offset(s->param->i_width,j  ,i+1,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,0)] - iaf->pix[offset(s->param->i_width,j+1,i+1,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,0)] - iaf->pix[offset(s->param->i_width,j+1,i  ,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,0)] - iaf->pix[offset(s->param->i_width,j+1,i-1,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,0)] - iaf->pix[offset(s->param->i_width,j  ,i-1,0)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,0)] - iaf->pix[offset(s->param->i_width,j-1,i-1,0)] )) * op;
+            kr = (fabs( iaf->pix[offset(iaf->i_pitch,j-1,i-1,0)] - iaf->pix[offset(iaf->i_pitch,j-1,i  ,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i  ,0)] - iaf->pix[offset(iaf->i_pitch,j-1,i+1,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i+1,0)] - iaf->pix[offset(iaf->i_pitch,j  ,i+1,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i+1,0)] - iaf->pix[offset(iaf->i_pitch,j+1,i+1,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i+1,0)] - iaf->pix[offset(iaf->i_pitch,j+1,i  ,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i  ,0)] - iaf->pix[offset(iaf->i_pitch,j+1,i-1,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i-1,0)] - iaf->pix[offset(iaf->i_pitch,j  ,i-1,0)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i-1,0)] - iaf->pix[offset(iaf->i_pitch,j-1,i-1,0)] )) * op;
 
-            kg = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,1)] - iaf->pix[offset(s->param->i_width,j-1,i  ,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,1)] - iaf->pix[offset(s->param->i_width,j-1,i+1,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,1)] - iaf->pix[offset(s->param->i_width,j  ,i+1,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,1)] - iaf->pix[offset(s->param->i_width,j+1,i+1,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,1)] - iaf->pix[offset(s->param->i_width,j+1,i  ,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,1)] - iaf->pix[offset(s->param->i_width,j+1,i-1,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,1)] - iaf->pix[offset(s->param->i_width,j  ,i-1,1)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,1)] - iaf->pix[offset(s->param->i_width,j-1,i-1,1)] )) * op;
+            kg = (fabs( iaf->pix[offset(iaf->i_pitch,j-1,i-1,1)] - iaf->pix[offset(iaf->i_pitch,j-1,i  ,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i  ,1)] - iaf->pix[offset(iaf->i_pitch,j-1,i+1,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i+1,1)] - iaf->pix[offset(iaf->i_pitch,j  ,i+1,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i+1,1)] - iaf->pix[offset(iaf->i_pitch,j+1,i+1,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i+1,1)] - iaf->pix[offset(iaf->i_pitch,j+1,i  ,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i  ,1)] - iaf->pix[offset(iaf->i_pitch,j+1,i-1,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i-1,1)] - iaf->pix[offset(iaf->i_pitch,j  ,i-1,1)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i-1,1)] - iaf->pix[offset(iaf->i_pitch,j-1,i-1,1)] )) * op;
 
 
-            kb = (fabs( iaf->pix[offset(s->param->i_width,j-1,i-1,2)] - iaf->pix[offset(s->param->i_width,j-1,i  ,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i  ,2)] - iaf->pix[offset(s->param->i_width,j-1,i+1,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j-1,i+1,2)] - iaf->pix[offset(s->param->i_width,j  ,i+1,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i+1,2)] - iaf->pix[offset(s->param->i_width,j+1,i+1,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i+1,2)] - iaf->pix[offset(s->param->i_width,j+1,i  ,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i  ,2)] - iaf->pix[offset(s->param->i_width,j+1,i-1,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j+1,i-1,2)] - iaf->pix[offset(s->param->i_width,j  ,i-1,2)] )
-                + fabs( iaf->pix[offset(s->param->i_width,j  ,i-1,2)] - iaf->pix[offset(s->param->i_width,j-1,i-1,2)] )) * op;
+            kb = (fabs( iaf->pix[offset(iaf->i_pitch,j-1,i-1,2)] - iaf->pix[offset(iaf->i_pitch,j-1,i  ,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i  ,2)] - iaf->pix[offset(iaf->i_pitch,j-1,i+1,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j-1,i+1,2)] - iaf->pix[offset(iaf->i_pitch,j  ,i+1,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i+1,2)] - iaf->pix[offset(iaf->i_pitch,j+1,i+1,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i+1,2)] - iaf->pix[offset(iaf->i_pitch,j+1,i  ,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i  ,2)] - iaf->pix[offset(iaf->i_pitch,j+1,i-1,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j+1,i-1,2)] - iaf->pix[offset(iaf->i_pitch,j  ,i-1,2)] )
+                + fabs( iaf->pix[offset(iaf->i_pitch,j  ,i-1,2)] - iaf->pix[offset(iaf->i_pitch,j-1,i-1,2)] )) * op;
 
-            iar->pix[offset(s->param->i_width,j,i,0)] = kr;
-            iar->pix[offset(s->param->i_width,j,i,1)] = kg;
-            iar->pix[offset(s->param->i_width,j,i,2)] = kb;
+            iar->pix[offset(iaf->i_pitch,j,i,0)] = kr;
+            iar->pix[offset(iaf->i_pitch,j,i,1)] = kg;
+            iar->pix[offset(iaf->i_pitch,j,i,2)] = kb;
         }
     }
     fp = fp;

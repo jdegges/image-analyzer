@@ -38,7 +38,7 @@ void normal_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_imag
 
             if( i == 0 || j == 0 || i == s->param->i_height-1 || j == s->param->i_width-1 )
             {
-                memset( &iar->pix[offset(s->param->i_width,j,i,0)], 0, sizeof(ia_pixel_t)*3 );
+                memset( &iar->pix[offset(iar->i_pitch,j,i,0)], 0, sizeof(ia_pixel_t)*3 );
                 continue;
             }
 
@@ -53,14 +53,14 @@ void normal_exec( ia_seq_t* s, ia_filter_param_t* fp, ia_image_t** iaim, ia_imag
                         continue;
                     for( pix = 3; pix--; )
                     {
-                        n[pix] *= iaf->pix[offset(s->param->i_width,j,i,pix)]
-                                  - iaf->pix[offset(s->param->i_width,cj,ci,pix)];
+                        n[pix] *= iaf->pix[offset(iar->i_pitch,j,i,pix)]
+                                  - iaf->pix[offset(iar->i_pitch,cj,ci,pix)];
                     }
                 }
             }
 
             for( pix = 3; pix--; )
-                iar->pix[offset(s->param->i_width,j,i,pix)] = clip_uint8( sqrt(fabs(n[pix])) );
+                iar->pix[offset(iar->i_pitch,j,i,pix)] = clip_uint8( sqrt(fabs(n[pix])) );
         }
     }
     fp = fp;
