@@ -43,6 +43,7 @@ ia_image_t* ia_image_create( size_t width, size_t height )
     ia_pthread_cond_init( &iaf->cond_rw, NULL );
 
     iaf->i_size = width*height*3;
+    iaf->i_pitch = FreeImage_GetPitch( (FIBITMAP*)iaf->dib );
 
     return iaf;
 }

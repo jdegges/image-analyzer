@@ -75,6 +75,7 @@ typedef struct ia_image_t
     uint64_t    i_frame;
     int32_t     i_refcount;
     uint64_t    i_size;
+    uint64_t    i_pitch;
     ia_pixel_t* pix;
     void*       dib;
     struct ia_image_t* next;
