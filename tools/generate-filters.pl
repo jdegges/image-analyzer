@@ -42,9 +42,9 @@ my $body1 =
 #include <assert.h>
 #include <unistd.h>
 
-#include "../common.h"
-#include "../image_analyzer.h"
-#include "../ia_sequence.h"
+#include "common.h"
+#include "image_analyzer.h"
+#include "ia_sequence.h"
 
 ';
 
@@ -62,7 +62,7 @@ static inline int offset( int w, int x, int y, int p )
 my $body3 =
 '
 /* Set up the filter function pointers */
-typedef void (*init_funcs)(ia_seq_t*, ia_filter_param_t*);
+typedef void (*init_funcs)(ia_seq_t*, ia_filter_param_t**);
 typedef void (*exec_funcs)(ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t*);
 typedef void (*clos_funcs)(ia_filter_param_t*);
 
@@ -85,7 +85,7 @@ open( FILTERS_DOT_H, ">filters/filters.h" );
 print FILTERS_DOT_H $header;
 print FILTERS_DOT_H $body1;
 
-my @filters = `ls filters/ | grep -i \.h | grep -v filters | sort`;
+my @filters = `ls filters/ | grep -i \.h\$ | grep -v filters | sort`;
 chop(@filters);
 
 my $fno = 1;
@@ -172,7 +172,7 @@ foreach $filter ( @filters )
             $exec_func = "&$1";
         }elsif( $line =~ /\s(\w+_init)[\(\s].*\;/ ) {
             $init_func = "&$1";
-        } elsif( $line =~ /\s(\w+_close)[\(\s].*\;/ ) {
+        } elsif( $line =~ /\s(\w+_clos)[\(\s].*\;/ ) {
             $clos_func = "&$1";
         }
     }

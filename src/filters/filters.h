@@ -31,9 +31,9 @@
 #include <assert.h>
 #include <unistd.h>
 
-#include "../common.h"
-#include "../image_analyzer.h"
-#include "../ia_sequence.h"
+#include "common.h"
+#include "image_analyzer.h"
+#include "ia_sequence.h"
 
 /* Filters Indexes */
 #define BLUR            1
@@ -74,7 +74,7 @@ static inline int offset( int w, int x, int y, int p )
 
 
 /* Set up the filter function pointers */
-typedef void (*init_funcs)(ia_seq_t*, ia_filter_param_t*);
+typedef void (*init_funcs)(ia_seq_t*, ia_filter_param_t**);
 typedef void (*exec_funcs)(ia_seq_t*, ia_filter_param_t*, ia_image_t**, ia_image_t*);
 typedef void (*clos_funcs)(ia_filter_param_t*);
 

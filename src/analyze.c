@@ -254,8 +254,9 @@ static inline ia_seq_t* analyze_init( ia_param_t* p )
     /* call any init functions */
     for ( j = 0; p->filter[j] != 0; j++ )
     {
-        if( filters.init[p->filter[j]] )
-            filters.init[p->filter[j]]( ias, ias->fparam[p->filter[j]] );
+        if( filters.init[p->filter[j]] ) {
+            filters.init[p->filter[j]]( ias, &ias->fparam[p->filter[j]] );
+        }
     }
 
     return ias;
