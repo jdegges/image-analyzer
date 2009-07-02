@@ -1,3 +1,5 @@
+CFLAGS = $(AM_CFLAGS) -O3
+
 bin_PROGRAMS = ia
 ia_SOURCES =				\
 	analyze.c				\
