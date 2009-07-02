@@ -322,7 +322,7 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
 void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
 {
     int rc;
-    ia_queue_obj_t* obj;
+    ia_queue_obj_t* obj = NULL;
     void* data;
 
     // get lock on queue
@@ -337,23 +337,18 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
     }
     assert( q->count > 0 );
 
-    // pop image off queue
-    obj = q->tail;
-    while( obj != NULL ) {
-        if( obj->i_pos == pos )
-            break;
-        obj = obj->next;
-    }
+    while( obj == NULL ) {
+        // pop image off queue
+        obj = q->tail;
+        while( obj != NULL ) {
+            if( obj->i_pos == pos )
+                break;
+            obj = obj->next;
+        }
 
-    // if frame wasnt on list -> return null
-    if( obj == NULL ) {
-        if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
-
-        if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
-            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_mutex_unlock()" );
-
-        return NULL;
+        // if frame wasnt on list -> return null
+        if( obj == NULL && 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_timedwait()" );
     }
 
     // remove from list
