@@ -301,20 +301,24 @@ void* analyze_exec( void* vptr )
         }
 
         current_frame = iaf->i_frame;
-        ia_queue_shove_sorted( iax->ias->proc_queue, iaf, iaf->i_frame );
+        if( 1 < i_maxrefs ) {
+            ia_queue_shove_sorted( iax->ias->proc_queue, iaf, iaf->i_frame );
 
-        if( current_frame < (uint32_t) i_maxrefs )
-            continue;
+            if( current_frame < (uint32_t) i_maxrefs )
+                continue;
 
-        for( i = i_maxrefs-1, j = 0; i >= 0; i--, j++ )
-        {
-            for( ;; )
+            for( i = i_maxrefs-1, j = 0; i >= 0; i--, j++ )
             {
-                iaim[i] = ia_queue_pek( iax->ias->proc_queue, current_frame-j );
-                if( iaim[i] )
-                    break;
-                usleep( 50 );
+                for( ;; )
+                {
+                    iaim[i] = ia_queue_pek( iax->ias->proc_queue, current_frame-j );
+                    if( iaim[i] )
+                        break;
+                    usleep( 50 );
+                }
             }
+        } else {
+            iaim[0] = iaf;
         }
 
         /* wait for output buf (wait for output manager signal) */
@@ -338,8 +342,12 @@ void* analyze_exec( void* vptr )
             no_filter = 0;
 
         /* close input buf (signal manage input) */
-        for( i = 0; i < i_maxrefs; i++ )
-            ia_queue_sht( iax->ias->proc_queue, iaim[i], i_maxrefs );
+        if( 1 < i_maxrefs ) {
+            for( i = 0; i < i_maxrefs; i++ )
+                ia_queue_sht( iax->ias->proc_queue, iaim[i], i_maxrefs );
+        } else {
+            ia_image_free( iaim[0] );
+        }
 
         /* close output buf (signal manage output) */
         ia_queue_push_sorted( iax->ias->output_queue, iar, iar->i_frame );
