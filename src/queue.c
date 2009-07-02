@@ -346,9 +346,16 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
             obj = obj->next;
         }
 
-        // if frame wasnt on list -> return null
-        if( obj == NULL && 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
-            ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_timedwait()" );
+        // if frame wasnt on list
+        if( obj == NULL ) {
+            // wake up anyone waiting to push
+            if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
+                ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
+
+            // wait for someone to push onto the queue
+            if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
+                ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_timedwait()" );
+        }
     }
 
     // remove from list
