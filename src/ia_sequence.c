@@ -169,7 +169,7 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
     pthread_mutex_init( &s->eoi_mutex, NULL );
 
     /* allocate input buffers */
-    s->input_queue = ia_queue_open( 2, 0 );
+    s->input_queue = ia_queue_open( s->param->i_threads+1, 0 );
     if( s->input_queue == NULL )
         return NULL;
 
