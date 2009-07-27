@@ -280,7 +280,9 @@ void* analyze_exec( void* vptr )
 {
     int no_filter = 0;
     ia_exec_t* iax = (ia_exec_t*) vptr;
+    ia_seq_t* s = iax->ias;
     const int i_maxrefs = iax->ias->param->i_maxrefs;
+    const int nrefs = iax->ias->nrefs;
     ia_image_t** iaim = malloc( sizeof(ia_image_t*)*i_maxrefs );
 
     if( !iaim )
@@ -289,8 +291,8 @@ void* analyze_exec( void* vptr )
     while( 1 )
     {
         ia_image_t *iaf, *iar;
-        int i, j;
-        uint64_t current_frame;
+        int j, rc;
+        uint64_t i, current_frame;
 
         /* wait for input buf (wait for input manager signal) */
         iaf = ia_queue_pop( iax->ias->input_queue );
@@ -298,24 +300,58 @@ void* analyze_exec( void* vptr )
         {
             ia_queue_shove( iax->ias->output_queue, iaf, iaf->i_frame );
             break;
+        } else {
+            iaf->i_refcount = i_maxrefs;
         }
 
         current_frame = iaf->i_frame;
+        /* short curcuit the fancy reference frame gathering stuff if the
+         * filter only needs one frame */
         if( 1 < i_maxrefs ) {
-            ia_queue_shove_sorted( iax->ias->proc_queue, iaf, iaf->i_frame );
+            int pos = current_frame % nrefs;
 
-            if( current_frame < (uint32_t) i_maxrefs )
+            if( 0 != (rc = ia_pthread_mutex_lock( &s->refs_mutex[pos] )) )
+                ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_lock()" );
+
+            /* make sure the current frame's slot in the ref list is open */
+            while( s->refs[current_frame%nrefs] != NULL ) {
+                if( 0 != (rc = ia_pthread_cond_wait( &s->refs_cond_nonfull[pos], &s->refs_mutex[pos] )) )
+                    ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_wait()" );
+            }
+
+            /* add the current frame to the ref list and signal anyone
+             * waiting on this frame to wake up */
+            s->refs[pos] = iaf;
+            if( 0 != (rc = ia_pthread_cond_broadcast( &s->refs_cond_nonempty[pos] )) )
+                ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_broadcast()" );
+
+            if( 0 != (rc = ia_pthread_mutex_unlock( &s->refs_mutex[pos] )) )
+                ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_unlock()" );
+
+            /* skip processing if this is one of the first frames in the ref
+             * list (i.e. there are not enough ref frames to process) */
+            if( current_frame < (uint32_t) i_maxrefs-1 ) {
+                iaf->i_refcount = current_frame+1;
                 continue;
+            }
 
-            for( i = i_maxrefs-1, j = 0; i >= 0; i--, j++ )
-            {
-                for( ;; )
-                {
-                    iaim[i] = ia_queue_pek( iax->ias->proc_queue, current_frame-j );
-                    if( iaim[i] )
-                        break;
-                    usleep( 50 );
+            /* pull out frames from the ref list to do the processing on */
+            for( i = current_frame-(i_maxrefs-1), j = 0; i < current_frame; i++ ) {
+                pos = i%nrefs;
+
+                if( 0 != (rc = ia_pthread_mutex_lock( &s->refs_mutex[pos] )) )
+                    ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_lock()" );
+
+                /* wait for the frame we want to be available */
+                while( s->refs[pos] == NULL || s->refs[pos]->i_frame != i) {
+                    if( 0 != (rc = ia_pthread_cond_wait( &s->refs_cond_nonempty[pos], &s->refs_mutex[pos] )) )
+                        ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_wait()" );
                 }
+
+                iaim[j++] = s->refs[pos];
+
+                if( 0 != (rc = ia_pthread_mutex_unlock( &s->refs_mutex[pos] )) )
+                    ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_unlock()" );
             }
         } else {
             iaim[0] = iaf;
@@ -341,10 +377,32 @@ void* analyze_exec( void* vptr )
         else
             no_filter = 0;
 
-        /* close input buf (signal manage input) */
+        /* short curicuit the fancy reference frame gathering if we only need
+         * one frame */
         if( 1 < i_maxrefs ) {
-            for( i = 0; i < i_maxrefs; i++ )
-                ia_queue_sht( iax->ias->proc_queue, iaim[i], i_maxrefs );
+            /* decrement the ref count of each frame since its been used once.
+             * each frame is only used i_maxrefs times */
+            for( i = current_frame-(i_maxrefs-1); i <= current_frame; i++ ) {
+                int pos = i % nrefs;
+                if( 0 != (rc = ia_pthread_mutex_lock( &s->refs_mutex[pos] )) )
+                    ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_lock()" );
+
+                /* decrement the frames ref count */
+                s->refs[pos]->i_refcount--;
+
+                /* if the frame is no longer needed, free it up */
+                if( s->refs[pos]->i_refcount == 0 ) {
+                    ia_image_free( s->refs[pos] );
+                    s->refs[pos] = NULL;
+
+                    /* wake up anybody waiting to use this ref list slot */
+                    if( 0 != (rc = ia_pthread_cond_broadcast( &s->refs_cond_nonfull[pos] )) )
+                        ia_pthread_error( rc, "analyze_exec()", "ia_pthread_cond_broadcast()" );
+                }
+                
+                if( 0 != (rc = ia_pthread_mutex_unlock( &s->refs_mutex[pos] )) )
+                    ia_pthread_error( rc, "analyze_exec()", "ia_pthread_mutex_unlock()" );
+            }
         } else {
             ia_image_free( iaim[0] );
         }

@@ -40,8 +40,13 @@ typedef void* ia_filter_param_t;
 typedef struct ia_seq_t
 {
     ia_queue_t*         input_queue;    // input frames
-    ia_queue_t*         proc_queue;
     ia_queue_t*         output_queue;   // output queue
+
+    ia_image_t**        refs;               // list of reference frames
+    pthread_mutex_t*    refs_mutex;         // mutexes
+    pthread_cond_t*     refs_cond_nonfull;  // cond var for ref list
+    pthread_cond_t*     refs_cond_nonempty; // cond var for ref list
+    uint64_t            nrefs;              // size of ref list
 
     uint64_t            i_frame;        // position of iaf in sequence
     ia_param_t*         param;          // contains all sequence parameters

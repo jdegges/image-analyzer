@@ -147,6 +147,7 @@ void* ia_seq_manage_output( void* vptr )
 ia_seq_t*   ia_seq_open( ia_param_t* p )
 {
     int rc;
+    uint64_t i;
 
     /* allocate/initialize sequence object */
     ia_seq_t* s = (ia_seq_t*) ia_malloc( sizeof(ia_seq_t) );
@@ -179,9 +180,33 @@ ia_seq_t*   ia_seq_open( ia_param_t* p )
 
     s->i_frame = 0;
 
-    /* allocate proess bufs */
-    s->proc_queue = ia_queue_open( s->param->i_maxrefs+1, s->param->i_maxrefs );
-    assert( s->proc_queue );
+    /* allocate reference frame bufs */
+    s->nrefs = s->param->i_maxrefs+s->param->i_threads-1;
+    s->refs = malloc( sizeof(ia_image_t*)*s->nrefs );
+    if( s->refs == NULL )
+        return NULL;
+    s->refs_mutex = malloc( sizeof(pthread_mutex_t)*s->nrefs );
+    if( s->refs_mutex == NULL )
+        return NULL;
+    s->refs_cond_nonfull = malloc( sizeof(pthread_cond_t)*s->nrefs );
+    if( s->refs_cond_nonfull == NULL )
+        return NULL;
+    s->refs_cond_nonempty = malloc( sizeof(pthread_cond_t)*s->nrefs );
+    if( s->refs_cond_nonempty == NULL )
+        return NULL;
+
+    for( i = 0; i < s->nrefs; i++ ) {
+        if( 0 != (rc = ia_pthread_mutex_init( &s->refs_mutex[i], NULL )) )
+            ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_mutex_init()" );
+
+        if( 0 != (rc = ia_pthread_cond_init( &s->refs_cond_nonfull[i], NULL )) )
+            ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_cond_init()" );
+
+        if( 0 != (rc = ia_pthread_cond_init( &s->refs_cond_nonempty[i], NULL )) )
+            ia_pthread_error( rc, "ia_seq_open()", "ia_pthread_cond_init()" );
+
+        s->refs[i] = NULL;
+    }
 
     pthread_attr_init( &s->attr );
     pthread_attr_setdetachstate( &s->attr, PTHREAD_CREATE_JOINABLE );
@@ -199,6 +224,7 @@ inline void ia_seq_close( ia_seq_t* s )
 {
     void* status;
     int rc;
+    uint64_t i;
 
     if( 0 != (rc = ia_pthread_join( s->tio[0], &status )) )
         ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_join()" );
@@ -208,11 +234,31 @@ inline void ia_seq_close( ia_seq_t* s )
 
     pthread_attr_destroy( &s->attr );
 
+    for( i = 0; i < s->nrefs; i++ ) {
+        if( 0 != (rc = ia_pthread_mutex_destroy( &s->refs_mutex[i] )) )
+            ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_mutex_destroy()" );
+
+        if( 0 != (rc = ia_pthread_cond_destroy( &s->refs_cond_nonfull[i] )) )
+            ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_cond_destroy()" );
+
+        if( 0 != (rc = ia_pthread_cond_destroy( &s->refs_cond_nonempty[i] )) )
+            ia_pthread_error( rc, "ia_seq_close()", "ia_pthread_cond_destroy()" );
+
+        if( s->refs[i] != NULL ) {
+            ia_image_free( s->refs[i] );
+            s->refs[i] = NULL;
+        }
+    }
+
+    ia_free( s->refs );
+    ia_free( s->refs_mutex );
+    ia_free( s->refs_cond_nonfull );
+    ia_free( s->refs_cond_nonempty );
+
     iaio_close( s->iaio );
 
     ia_queue_close( s->output_queue );
     ia_queue_close( s->input_queue );
-    ia_queue_close( s->proc_queue);
 
     ia_free( s );
 }
