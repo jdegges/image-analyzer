@@ -224,7 +224,10 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
         else if( (option_index == 10 && c == 0) || (option_index == 0 && c == 'd') )
             strncpy( p->video_device, optarg, 1031 );
         else if( (option_index == 11 && c == 0) || (option_index == 0 && c == 'm') )
+        {
             p->i_maxrefs = strtoul( optarg, NULL, 10 );
+            p->i_maxrefs = p->i_maxrefs ? p->i_maxrefs : 1;
+        }
         else if( (option_index == 12 && c == 0) || (option_index == 0 && c == 'x') )
         {
             strncpy( p->ext, optarg, 10 );
@@ -247,7 +250,10 @@ int parse_args ( ia_param_t* p,int argc,char** argv )
             }
         }
         else if( (option_index == 13 && c == 0) || (option_index == 0 && c == 'j') )
+        {
             p->i_threads = strtoul( optarg, NULL, 10 );
+            p->i_threads = p->i_threads ? p->i_threads : 1;
+        }
         else if( (option_index == 14 && c == 0) )
             p->i_vframes = strtoul( optarg, NULL, 10 );
         else if( (option_index == 15 && c == 0) || (option_index == 0 && c == 't') )
