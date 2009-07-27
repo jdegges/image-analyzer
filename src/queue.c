@@ -154,8 +154,8 @@ int _ia_queue_push( ia_queue_t* q, void* data, uint32_t pos, ia_queue_pushtype_t
     q->count++;
 
     // if someone is waiting to pop, send signal
-    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonempty )) )
-        ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonempty )) )
+        ia_pthread_error( rc, "ia_seq_push()", "ia_pthread_cond_broadcast()" );
 
     // unlock queue
     if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
@@ -212,8 +212,8 @@ void* ia_queue_pop( ia_queue_t* q )
     q->count--;
 
     // if someone is waiting to push, send signal
-    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_pop()", "ia_pthread_cond_broadcast()" );
 
     // unlock queue
     if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
@@ -285,8 +285,8 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
 
     if( obj == NULL ) {
         // wake up the threads waiting to push to this queue
-        if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-            ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
+        if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonfull )) )
+            ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_broadcast()" );
 
         // unlock queue
         if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
@@ -310,8 +310,8 @@ void ia_queue_sht( ia_queue_t* q, void* data, uint8_t count )
     }
 
     // wake up the threads waiting to push to this queue
-    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_sht()", "ia_pthread_cond_broadcast()" );
 
     // unlock queue
     if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
@@ -349,8 +349,8 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
         // if frame wasnt on list
         if( obj == NULL ) {
             // wake up anyone waiting to push
-            if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-                ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
+            if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonfull )) )
+                ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
 
             // wait for someone to push onto the queue
             if( 0 != (rc = ia_pthread_cond_wait( &q->cond_nonempty, &q->mutex )) )
@@ -383,8 +383,8 @@ void* ia_queue_pop_item( ia_queue_t* q, uint32_t pos )
     q->count--;
 
     // if someone is waiting to push, send signal
-    if( 0 != (rc = ia_pthread_cond_signal( &q->cond_nonfull )) )
-        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_signal()" );
+    if( 0 != (rc = ia_pthread_cond_broadcast( &q->cond_nonfull )) )
+        ia_pthread_error( rc, "ia_queue_pop_frame()", "ia_pthread_cond_broadcast()" );
 
     // unlock queue
     if( 0 != (rc = ia_pthread_mutex_unlock( &q->mutex )) )
