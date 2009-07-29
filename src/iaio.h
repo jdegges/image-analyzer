@@ -78,6 +78,7 @@ typedef struct iaio_t
     uint32_t        i_height;
     bool            eoi;
     bool            b_thumbnail;
+    bool            b_decode;
 
 #ifdef HAVE_FFMPEG
     ia_ffmpeg_t*    ffio;

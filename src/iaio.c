@@ -27,6 +27,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <regex.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "iaio.h"
 
@@ -276,6 +279,38 @@ int iaio_file_probeimage( iaio_t* iaio )
     return 0;
 }
 
+int iaio_freeimage_decode_image( iaio_t* iaio, ia_image_t* iaf )
+{
+    FIMEMORY *hmem = FreeImage_OpenMemory( iaf->pix, iaf->i_size );
+    if( NULL == hmem ) {
+        fprintf( stderr, "iaio_freeimage_decode_image(): FreeImage_OpenMemory(): failed to open memory stream\n" );
+        return 1;
+    }
+
+    FREE_IMAGE_FORMAT fif = FreeImage_GetFileTypeFromMemory( hmem, 0 );
+    if( FIF_UNKNOWN == fif ) {
+        fprintf( stderr, "iaio_freeimage_decode_image(): FreeImage_GetFileTypeFromMemory(): couldnt figure out file type\n" );
+        return 1;
+    }
+
+    FIBITMAP *dib = FreeImage_LoadFromMemory( fif, hmem, 0 );
+    if( NULL == dib ) {
+        fprintf( stderr, "iaio_freeimage_decode_image(): FreeImage_LoadFromMemory(): couldnt load from memory\n" );
+        return 1;
+    }
+
+    ia_pixel_t* pix = iaf->pix;
+    iaf->dib = FreeImage_ConvertTo24Bits( dib );
+    iaf->pix = FreeImage_GetBits( (FIBITMAP*)iaf->dib );
+    iaf->i_size = iaio->i_size;
+
+    FreeImage_Unload( dib );
+    FreeImage_CloseMemory( hmem );
+    free( pix );
+
+    return 0;
+}
+
 /*
  * ret val:
  * 1 = error
@@ -283,31 +318,81 @@ int iaio_file_probeimage( iaio_t* iaio )
  */
 int iaio_file_getimage( iaio_t* iaio, ia_image_t* iaf )
 {
-    FIBITMAP* dib = NULL;
+    char* str;
+
+    struct stat buf;
+    int result;
+    FILE* stream;
+
+    FIBITMAP* dib;
     FREE_IMAGE_FORMAT fif;
 
     if( ia_fgets(iaio->fin.buf, 1031, iaio->fin.filp) == NULL ) {
         return 1;
     }
-    char* str = ia_strtok( iaio->fin.buf, "\n" );
 
-    fif = FreeImage_GetFileType ( str,0 );
-    if ( fif == FIF_UNKNOWN )
-        fif = FreeImage_GetFIFFromFilename ( str );
-    if ( (fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif) )
-        dib = FreeImage_Load ( fif, str, 0 );
-    if ( dib == NULL )
-    {
-        fprintf( stderr,"ERROR: iaio_file_getimage(): opening image file %s\n", str );
+    if( NULL == (str = ia_strtok(iaio->fin.buf, "\n")) ) {
         return 1;
     }
 
-    if( iaf->dib ) {
-        FreeImage_Unload( (FIBITMAP*)iaf->dib );
+    switch( iaio->b_decode ) {
+        case true:
+            if( 0 != (result = stat(str, &buf)) ) {
+                return 1;
+            }
+
+            if( iaf->dib ) {
+                FreeImage_Unload( (FIBITMAP*)iaf->dib );
+            }
+
+            if( NULL == (iaf->pix = malloc(buf.st_size * sizeof(uint8_t))) ) {
+                return 1;
+            }
+
+            if( NULL == (stream = fopen(str, "rb")) ) {
+                return 1;
+            }
+
+            if( buf.st_size != (result = fread(iaf->pix, sizeof(uint8_t), buf.st_size, stream)) ) {
+                fprintf( stderr, "iaio_file_getimage(): fread(): read only %d/%d items\n", result, (int)buf.st_size );
+                return 1;
+            }
+
+            if( EOF == fclose(stream) ) {
+                fprintf( stderr, "iaio_file_getimage(): fclose(stream): %s\n", strerror(errno) );
+                return 1;
+            }
+
+            iaf->i_size = buf.st_size * sizeof(uint8_t);
+
+            break;
+
+        case false:
+            dib = NULL;
+
+            fif = FreeImage_GetFileType ( str,0 );
+            if ( fif == FIF_UNKNOWN )
+                fif = FreeImage_GetFIFFromFilename ( str );
+            if ( (fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif) )
+                dib = FreeImage_Load ( fif, str, 0 );
+            if ( dib == NULL )
+            {
+                fprintf( stderr,"ERROR: iaio_file_getimage(): opening image file %s\n", str );
+                return 1;
+            }
+
+            if( iaf->dib ) {
+                FreeImage_Unload( (FIBITMAP*)iaf->dib );
+            }
+            iaf->dib = FreeImage_ConvertTo24Bits( dib );
+            iaf->pix = FreeImage_GetBits( (FIBITMAP*)iaf->dib );
+            FreeImage_Unload( dib );
+
+            break;
+
+        default:
+            return 1;
     }
-    iaf->dib = FreeImage_ConvertTo24Bits( dib );
-    iaf->pix = FreeImage_GetBits( (FIBITMAP*)iaf->dib );
-    FreeImage_Unload( dib );
 
     return 0;
 }
@@ -489,6 +574,7 @@ iaio_t* iaio_open( ia_param_t* p )
     iaio->fin.buf = NULL;
     iaio->input_type =
     iaio->output_type = 0;
+    iaio->b_decode = 1 < p->i_threads ? true : false;
 
     /* if cam input */
     if( p->b_vdev )

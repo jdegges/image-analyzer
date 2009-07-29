@@ -95,9 +95,13 @@ void* analyze_exec( void* vptr )
         {
             ia_queue_shove( iax->ias->output_queue, iaf, iaf->i_frame );
             break;
-        } else {
-            iaf->i_refcount = i_maxrefs;
         }
+
+        if( s->iaio->b_decode && 1 == iaio_freeimage_decode_image(s->iaio, iaf) ) {
+            fprintf( stderr, "decoding image failed\n" );
+            return NULL;
+        }
+        iaf->i_refcount = i_maxrefs;
 
         current_frame = iaf->i_frame;
         /* short curcuit the fancy reference frame gathering stuff if the
