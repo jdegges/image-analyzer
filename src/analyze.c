@@ -135,7 +135,7 @@ void* analyze_exec( void* vptr )
             }
 
             /* pull out frames from the ref list to do the processing on */
-            for( i = current_frame-(i_maxrefs-1), j = 0; i < current_frame; i++ ) {
+            for( i = current_frame-(i_maxrefs-1), j = 0; i <= current_frame; i++ ) {
                 pos = i%nrefs;
 
                 if( 0 != (rc = ia_pthread_mutex_lock( &s->refs_mutex[pos] )) )

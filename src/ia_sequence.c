@@ -104,7 +104,7 @@ void* ia_seq_manage_output( void* vptr )
     ia_seq_t* ias = (ia_seq_t*) vptr;
     ia_image_t* iar;
     uint64_t i_threads = ias->param->i_threads;
-    uint64_t i_frame = (uint32_t) ias->param->i_maxrefs;
+    uint64_t i_frame = (uint32_t) ias->param->i_maxrefs - 1;
     int end = i_threads;
 
     /* while there is more output */
