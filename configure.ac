@@ -40,6 +40,7 @@ AC_ARG_WITH([v4l2],
     [with_v4l2=check])
 
 AC_CHECK_LIB([freeimage], [main])
+AC_CHECK_LIB([stdc++], [main])
 AC_CHECK_LIB([pthread], [main])
 AS_IF([test "x$with_sdl" != xno],
     [AC_HAVE_LIBRARY([-lSDL])])
